@@ -1,0 +1,124 @@
+{
+  "projectType": "framework",
+  "projectName": "Qbox Core",
+  "projectDescription": "A performant and secure FiveM framework for building GTA V roleplay servers with built-in multicharacter, job/gang systems, and QB compatibility.",
+  "theme": "aspen",
+  "primaryColor": "#FF6B35",
+  "lightColor": "#FFB88C",
+  "darkColor": "#CC5429",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "installation",
+              "quickstart"
+            ]
+          },
+          {
+            "group": "Core Concepts",
+            "pages": [
+              "concepts/players",
+              "concepts/jobs-gangs",
+              "concepts/characters",
+              "concepts/groups",
+              "concepts/permissions"
+            ]
+          },
+          {
+            "group": "Configuration",
+            "pages": [
+              "configuration/server",
+              "configuration/client",
+              "configuration/queue",
+              "configuration/shared"
+            ]
+          },
+          {
+            "group": "Modules",
+            "pages": [
+              "modules/hooks",
+              "modules/logger",
+              "modules/lib"
+            ]
+          },
+          {
+            "group": "Bridge",
+            "pages": [
+              "bridge/overview",
+              "bridge/compatibility"
+            ]
+          },
+          {
+            "group": "Advanced",
+            "pages": [
+              "advanced/vehicle-persistence",
+              "advanced/storage-system",
+              "advanced/localization"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Server",
+            "pages": [
+              "api/server/functions",
+              "api/server/player",
+              "api/server/commands",
+              "api/server/events"
+            ]
+          },
+          {
+            "group": "Client",
+            "pages": [
+              "api/client/functions",
+              "api/client/events"
+            ]
+          },
+          {
+            "group": "Shared",
+            "pages": [
+              "api/shared/functions",
+              "api/shared/exports"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Backwards compatibility with QB resources via bridge layer",
+    "Built-in multicharacter system",
+    "Multi-job and multi-gang support",
+    "Queue system for full servers",
+    "Persistent player vehicles",
+    "Export-based API",
+    "Optional modules: Hooks, Logger, Lib utilities",
+    "Comprehensive admin commands",
+    "Discord and Ox logger integration"
+  ],
+  "publicApiSurface": [
+    "exports.qbx_core:Login(source, citizenid, newData)",
+    "exports.qbx_core:GetOfflinePlayer(citizenid)",
+    "exports.qbx_core:SetJob(identifier, jobName, grade)",
+    "exports.qbx_core:SetGang(identifier, gangName, grade)",
+    "exports.qbx_core:GetPlayer(source)",
+    "exports.qbx_core:GetPlayerByCitizenId(citizenid)",
+    "exports.qbx_core:GetPlayers()",
+    "exports.qbx_core:registerHook(event, callback)",
+    "exports.qbx_core:removeHooks(hookId)",
+    "/tp - Teleport command",
+    "/tpm - Teleport to marker",
+    "/setjob - Set player job",
+    "/setgang - Set player gang",
+    "/giveitem - Give item to player",
+    "/car - Spawn vehicle"
+  ]
+}
