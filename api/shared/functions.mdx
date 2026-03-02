@@ -1,0 +1,86 @@
+---
+title: Shared Functions
+description: Core shared functions available on both client and server
+---
+
+## HasPlayerGotGroup
+
+Checks if a player has a specific job, gang, group, or citizenid.
+
+```lua
+HasPlayerGotGroup(filter, playerData, primary)
+```
+
+### Parameters
+
+- `filter` (string | string[] | table&lt;string, number&gt;) - The filter to check against
+  - **String**: Job name, gang name, group name, or citizenid
+  - **Array**: List of job/gang/group names or citizenids
+  - **Hash table**: Map of job/gang/group names to minimum grade levels
+- `playerData` (table) - The player data object to check
+- `primary` (boolean) - Optional. If true, only checks primary job/gang
+
+### Returns
+
+- `boolean` - True if the player matches the filter
+
+### Examples
+
+```lua
+-- Check if player has a specific job
+local hasJob = HasPlayerGotGroup('police', playerData)
+
+-- Check if player has any of multiple jobs
+local hasAnyJob = HasPlayerGotGroup({'police', 'ambulance'}, playerData)
+
+-- Check if player has job with minimum grade
+local hasSeniorPolice = HasPlayerGotGroup({police = 2}, playerData)
+
+-- Check only primary job
+local isPrimaryPolice = HasPlayerGotGroup('police', playerData, true)
+
+-- Check by citizenid
+local isCitizen = HasPlayerGotGroup('ABC12345', playerData)
+```
+
+### Notes
+
+- Function borrowed from ox_target with MIT License
+- When checking grades, the player must have that grade level or higher
+- Can check jobs, gangs, groups, and citizenids simultaneously
+- Setting `primary` to true ignores secondary jobs/gangs
+
+---
+
+## GetPlayerGroups
+
+Returns all jobs and gangs a player has as a combined table.
+
+```lua
+GetPlayerGroups(playerData)
+```
+
+### Parameters
+
+- `playerData` (PlayerData) - The player data object
+
+### Returns
+
+- `table<string, integer>` - Map of group names to grade levels
+
+### Example
+
+```lua
+local groups = GetPlayerGroups(playerData)
+-- Returns: { police = 2, ballas = 1, ... }
+
+for groupName, grade in pairs(groups) do
+    print(('Player has %s at grade %d'):format(groupName, grade))
+end
+```
+
+### Notes
+
+- Combines both `playerData.jobs` and `playerData.gangs` into one table
+- Warns if duplicate group names are found between jobs and gangs
+- Used internally by `HasPlayerGotGroup` when `primary` is false

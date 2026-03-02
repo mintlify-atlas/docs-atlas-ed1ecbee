@@ -1,28 +1,21 @@
-# Mintlify Starter Kit
+# Qbox Core Documentation
 
-Use the starter kit to get your docs deployed and ready to customize.
+Official documentation for Qbox Core - a performant and secure FiveM framework for building GTA V roleplay servers.
 
-Click the green **Use this template** button at the top of this repo to copy the Mintlify starter kit. The starter kit contains examples with
+## Features
 
-- Guide pages
-- Navigation
-- Customizations
-- API reference pages
-- Use of popular components
+- Backwards compatibility with QB-Core resources via bridge layer
+- Built-in multicharacter system
+- Multi-job and multi-gang support
+- Queue system for full servers
+- Persistent player vehicles
+- Export-based API
+- Optional modules: Hooks, Logger, Lib utilities
 
-**[Follow the full quickstart guide](https://starter.mintlify.com/quickstart)**
+## Links
 
-## AI-assisted writing
-
-Set up your AI coding tool to work with Mintlify:
-
-```bash
-npx skills add https://mintlify.com/docs
-```
-
-This command installs Mintlify's documentation skill for your configured AI tools like Claude Code, Cursor, Windsurf, and others. The skill includes component reference, writing standards, and workflow guidance.
-
-See the [AI tools guides](/ai-tools) for tool-specific setup.
+- [GitHub Repository](https://github.com/Qbox-project/qbx_core)
+- [Qbox Discord](https://discord.gg/qbox)
 
 ## Development
 

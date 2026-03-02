@@ -1,0 +1,408 @@
+---
+title: Admin Commands
+description: Server admin commands for player and server management
+---
+
+## Teleport Commands
+
+### /tp
+
+Teleport to coordinates or another player.
+
+<ParamField path="x" type="number | playerId" required>
+  X coordinate or player ID to teleport to
+</ParamField>
+
+<ParamField path="y" type="number">
+  Y coordinate (required with z if using coordinates)
+</ParamField>
+
+<ParamField path="z" type="number">
+  Z coordinate (required with y if using coordinates)
+</ParamField>
+
+**Required Permission:** `group.admin`
+
+```lua
+-- Teleport to player ID 1
+/tp 1
+
+-- Teleport to coordinates
+/tp 100 200 30
+```
+
+### /tpm
+
+Teleport to your current waypoint marker.
+
+**Required Permission:** `group.admin`
+
+```lua
+/tpm
+```
+
+## Server Management
+
+### /togglepvp
+
+Toggle server-wide PVP on or off.
+
+**Required Permission:** `group.admin`
+
+```lua
+/togglepvp
+```
+
+### /openserver
+
+Open the server to allow players to join.
+
+**Required Permission:** `group.admin`
+
+```lua
+/openserver
+```
+
+### /closeserver
+
+Close the server and kick non-whitelisted players.
+
+<ParamField path="reason" type="string" required>
+  Reason for closing the server
+</ParamField>
+
+**Required Permission:** `group.admin`
+
+```lua
+/closeserver Server maintenance
+```
+
+## Permission Commands
+
+### /addpermission
+
+Add a permission to a player.
+
+<ParamField path="id" type="playerId" required>
+  Player server ID
+</ParamField>
+
+<ParamField path="permission" type="string" required>
+  Permission name to grant
+</ParamField>
+
+**Required Permission:** `group.admin`
+
+**Note:** This command is deprecated. Use ACE permissions configuration instead.
+
+```lua
+/addpermission 1 admin
+```
+
+### /removepermission
+
+Remove a permission from a player.
+
+<ParamField path="id" type="playerId" required>
+  Player server ID
+</ParamField>
+
+<ParamField path="permission" type="string" required>
+  Permission name to revoke
+</ParamField>
+
+**Required Permission:** `group.admin`
+
+**Note:** This command is deprecated. Use ACE permissions configuration instead.
+
+```lua
+/removepermission 1 admin
+```
+
+## Vehicle Commands
+
+### /car
+
+Spawn a vehicle.
+
+<ParamField path="model" type="string" required>
+  Vehicle model name
+</ParamField>
+
+<ParamField path="keepCurrentVehicle" type="boolean">
+  Whether to keep the current vehicle (deletes current if false)
+</ParamField>
+
+**Required Permission:** `group.admin`
+
+```lua
+-- Spawn vehicle (deletes current)
+/car adder
+
+-- Spawn vehicle (keeps current)
+/car adder true
+```
+
+### /dv
+
+Delete nearby vehicles or the vehicle you're in.
+
+<ParamField path="radius" type="number">
+  Radius to delete vehicles in (optional)
+</ParamField>
+
+**Required Permission:** `group.admin`
+
+```lua
+-- Delete vehicle you're in
+/dv
+
+-- Delete all vehicles within 10 meters
+/dv 10
+```
+
+## Money Commands
+
+### /givemoney
+
+Give money to a player.
+
+<ParamField path="id" type="playerId" required>
+  Player server ID
+</ParamField>
+
+<ParamField path="moneytype" type="string" required>
+  Money type: `cash`, `bank`, or `crypto`
+</ParamField>
+
+<ParamField path="amount" type="number" required>
+  Amount to give
+</ParamField>
+
+**Required Permission:** `group.admin`
+
+```lua
+/givemoney 1 cash 5000
+/givemoney 1 bank 10000
+```
+
+### /setmoney
+
+Set a player's money to a specific amount.
+
+<ParamField path="id" type="playerId" required>
+  Player server ID
+</ParamField>
+
+<ParamField path="moneytype" type="string" required>
+  Money type: `cash`, `bank`, or `crypto`
+</ParamField>
+
+<ParamField path="amount" type="number" required>
+  Amount to set
+</ParamField>
+
+**Required Permission:** `group.admin`
+
+```lua
+/setmoney 1 bank 50000
+```
+
+## Job Commands
+
+### /job
+
+Check your current job information.
+
+```lua
+/job
+```
+
+### /setjob
+
+Set a player's primary job (replaces current job).
+
+<ParamField path="id" type="playerId" required>
+  Player server ID
+</ParamField>
+
+<ParamField path="job" type="string" required>
+  Job name
+</ParamField>
+
+<ParamField path="grade" type="number">
+  Job grade (defaults to 0)
+</ParamField>
+
+**Required Permission:** `group.admin`
+
+```lua
+/setjob 1 police 3
+/setjob 1 mechanic
+```
+
+### /changejob
+
+Change a player's primary job (must already have the job).
+
+<ParamField path="id" type="playerId" required>
+  Player server ID
+</ParamField>
+
+<ParamField path="job" type="string" required>
+  Job name to set as primary
+</ParamField>
+
+**Required Permission:** `group.admin`
+
+```lua
+/changejob 1 mechanic
+```
+
+### /addjob
+
+Add a job to a player (allows multiple jobs).
+
+<ParamField path="id" type="playerId" required>
+  Player server ID
+</ParamField>
+
+<ParamField path="job" type="string" required>
+  Job name
+</ParamField>
+
+<ParamField path="grade" type="number">
+  Job grade (defaults to 0)
+</ParamField>
+
+**Required Permission:** `group.admin`
+
+```lua
+/addjob 1 police 2
+```
+
+### /removejob
+
+Remove a job from a player.
+
+<ParamField path="id" type="playerId" required>
+  Player server ID
+</ParamField>
+
+<ParamField path="job" type="string" required>
+  Job name to remove
+</ParamField>
+
+**Required Permission:** `group.admin`
+
+```lua
+/removejob 1 police
+```
+
+## Gang Commands
+
+### /gang
+
+Check your current gang information.
+
+```lua
+/gang
+```
+
+### /setgang
+
+Set a player's primary gang (replaces current gang).
+
+<ParamField path="id" type="playerId" required>
+  Player server ID
+</ParamField>
+
+<ParamField path="gang" type="string" required>
+  Gang name
+</ParamField>
+
+<ParamField path="grade" type="number">
+  Gang grade (defaults to 0)
+</ParamField>
+
+**Required Permission:** `group.admin`
+
+```lua
+/setgang 1 ballas 2
+/setgang 1 vagos
+```
+
+## Communication Commands
+
+### /ooc
+
+Send an out-of-character message to nearby players.
+
+<ParamField path="message" type="string" required>
+  Message to send (supports multiple words)
+</ParamField>
+
+```lua
+/ooc Need to go AFK for a minute
+```
+
+**Note:** Only players within 20 meters and admins who have opted in will see the message.
+
+### /me
+
+Display a roleplay action above your character.
+
+<ParamField path="message" type="string" required>
+  Action description
+</ParamField>
+
+```lua
+/me pulls out a flashlight
+/me checks the time on their watch
+```
+
+## Utility Commands
+
+### /id
+
+Check your current server ID.
+
+```lua
+/id
+```
+
+### /logout
+
+Force logout a player from their character.
+
+**Required Permission:** `group.admin`
+
+```lua
+/logout
+```
+
+### /deletechar
+
+Permanently delete a player's character.
+
+<ParamField path="id" type="number" required>
+  Player server ID
+</ParamField>
+
+**Required Permission:** `group.admin`
+
+**Warning:** This action is irreversible!
+
+```lua
+/deletechar 1
+```
+
+### /optin
+
+Toggle opt-in status for receiving admin reports and notifications.
+
+**Required Permission:** `group.admin`
+
+```lua
+/optin
+```

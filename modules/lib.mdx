@@ -1,0 +1,742 @@
+---
+title: Library Utilities
+description: Collection of utility functions for strings, math, tables, vehicles, and more
+icon: toolbox
+---
+
+The lib module provides a comprehensive set of utility functions organized into categories: string manipulation, math operations, table utilities, vehicle helpers, and UI drawing functions.
+
+## Overview
+
+The library utilities are available globally through the `qbx` namespace:
+
+```lua
+-- String utilities
+local trimmed = qbx.string.trim('  hello  ')  -- "hello"
+
+-- Math utilities
+local rounded = qbx.math.round(3.7)  -- 4
+
+-- Table utilities
+local size = qbx.table.size({a = 1, b = 2, c = 3})  -- 3
+
+-- Vehicle utilities
+local plate = qbx.getVehiclePlate(vehicle)  -- "ABC 123"
+```
+
+## String Utilities
+
+### qbx.string.trim
+
+Removes leading and trailing whitespace from a string.
+
+```lua
+qbx.string.trim(str)
+```
+
+#### Parameters
+
+- `str` (string) - The string to trim
+
+#### Returns
+
+- (string) - The trimmed string
+
+#### Example
+
+```lua
+local text = '  Hello World  '
+local trimmed = qbx.string.trim(text)  -- "Hello World"
+
+local plate = '  ABC123  '
+local cleanPlate = qbx.string.trim(plate)  -- "ABC123"
+```
+
+### qbx.string.capitalize
+
+Capitalizes the first character of a string.
+
+```lua
+qbx.string.capitalize(str)
+```
+
+#### Parameters
+
+- `str` (string) - The string to capitalize
+
+#### Returns
+
+- (string) - The capitalized string
+
+#### Example
+
+```lua
+local name = 'john'
+local capitalized = qbx.string.capitalize(name)  -- "John"
+
+local status = 'active'
+local formatted = qbx.string.capitalize(status)  -- "Active"
+```
+
+## Math Utilities
+
+### qbx.math.round
+
+Rounds a number to a specified number of decimal places.
+
+```lua
+qbx.math.round(num, decimalPlaces?)
+```
+
+#### Parameters
+
+- `num` (number) - The number to round
+- `decimalPlaces` (integer, optional) - Number of decimal places to round to
+
+#### Returns
+
+- (number) - Rounded integer if `decimalPlaces` isn't provided, otherwise a number with specified decimal places
+
+#### Example
+
+```lua
+-- Round to nearest integer
+local rounded = qbx.math.round(3.7)  -- 4
+local rounded2 = qbx.math.round(3.2)  -- 3
+
+-- Round to specific decimal places
+local price = qbx.math.round(19.99567, 2)  -- 20.00
+local precise = qbx.math.round(3.14159, 3)  -- 3.142
+```
+
+## Table Utilities
+
+### qbx.table.size
+
+Counts the number of items in a table, useful for non-array tables.
+
+```lua
+qbx.table.size(tbl)
+```
+
+#### Parameters
+
+- `tbl` (table) - The table to count
+
+#### Returns
+
+- (integer) - The number of items in the table
+
+#### Example
+
+```lua
+local players = {
+    ['abc123'] = {name = 'John'},
+    ['def456'] = {name = 'Jane'},
+    ['ghi789'] = {name = 'Bob'}
+}
+
+local count = qbx.table.size(players)  -- 3
+
+-- For arrays, use # operator instead
+local array = {1, 2, 3, 4}
+local arraySize = #array  -- 4
+```
+
+### qbx.table.mapBySubfield
+
+Groups table items by a specified subfield, creating a map of arrays.
+
+```lua
+qbx.table.mapBySubfield(tbl, subfield)
+```
+
+#### Parameters
+
+- `tbl` (table) - The table to map
+- `subfield` (any) - The field to group by
+
+#### Returns
+
+- (table&lt;any, table[]>) - A table mapping subfield values to arrays of items
+
+#### Example
+
+```lua
+local vehicles = {
+    {model = 'adder', type = 'super'},
+    {model = 't20', type = 'super'},
+    {model = 'bmx', type = 'bicycle'},
+    {model = 'scorcher', type = 'bicycle'}
+}
+
+local byType = qbx.table.mapBySubfield(vehicles, 'type')
+-- Result:
+-- {
+--     super = {
+--         {model = 'adder', type = 'super'},
+--         {model = 't20', type = 'super'}
+--     },
+--     bicycle = {
+--         {model = 'bmx', type = 'bicycle'},
+--         {model = 'scorcher', type = 'bicycle'}
+--     }
+-- }
+
+print(#byType.super)  -- 2
+print(#byType.bicycle)  -- 2
+```
+
+## Array Utilities
+
+### qbx.array.contains
+
+Checks if an array contains a specific value.
+
+```lua
+qbx.array.contains(arr, val)
+```
+
+#### Parameters
+
+- `arr` (T[]) - The array to search
+- `val` (T) - The value to find
+
+#### Returns
+
+- (boolean) - `true` if the value is found, `false` otherwise
+
+#### Example
+
+```lua
+local jobs = {'police', 'ambulance', 'mechanic'}
+
+if qbx.array.contains(jobs, 'police') then
+    print('Police job found')  -- This will print
+end
+
+if qbx.array.contains(jobs, 'taxi') then
+    print('Taxi job found')  -- This won't print
+end
+```
+
+## Vehicle Utilities
+
+### qbx.getVehiclePlate
+
+Gets the trimmed license plate of a vehicle.
+
+```lua
+qbx.getVehiclePlate(vehicle)
+```
+
+#### Parameters
+
+- `vehicle` (integer) - The vehicle entity handle
+
+#### Returns
+
+- (string | nil) - The trimmed plate string, or nil if vehicle doesn't exist
+
+#### Example
+
+```lua
+local vehicle = GetVehiclePedIsIn(PlayerPedId(), false)
+local plate = qbx.getVehiclePlate(vehicle)  -- "ABC123" (trimmed)
+```
+
+### qbx.generateRandomPlate
+
+Generates a random license plate with an optional pattern.
+
+```lua
+qbx.generateRandomPlate(pattern?)
+```
+
+#### Parameters
+
+- `pattern` (string, optional) - Pattern for plate generation. Default: `'........'` (8 random chars)
+
+#### Returns
+
+- (string) - A randomly generated uppercase plate
+
+#### Pattern Format
+
+See [lib.string.random](https://coxdocs.dev/ox_lib/Modules/String/Shared#stringrandom) from ox_lib for pattern syntax.
+
+#### Example
+
+```lua
+-- Generate random 8-character plate
+local plate1 = qbx.generateRandomPlate()  -- "XY7Z9ABC"
+
+-- Generate with custom pattern
+local plate2 = qbx.generateRandomPlate('11AAA111')  -- "73ABC492"
+```
+
+<Warning>
+The generated plate may already be in use by another vehicle. Always verify uniqueness before assigning to a vehicle.
+</Warning>
+
+### qbx.getCardinalDirection
+
+Gets the cardinal direction an entity is facing.
+
+```lua
+qbx.getCardinalDirection(entity)
+```
+
+#### Parameters
+
+- `entity` (integer) - The entity handle
+
+#### Returns
+
+- (string) - `'North'`, `'South'`, `'East'`, or `'West'`
+
+#### Example
+
+```lua
+local ped = PlayerPedId()
+local direction = qbx.getCardinalDirection(ped)
+
+if direction == 'North' then
+    print('Facing north')
+elseif direction == 'South' then
+    print('Facing south')
+elseif direction == 'East' then
+    print('Facing east')
+else
+    print('Facing west')
+end
+```
+
+## Server-Side Vehicle Utilities
+
+### qbx.spawnVehicle
+
+Spawns a vehicle on the server using `CreateVehicleServerSetter`.
+
+```lua
+qbx.spawnVehicle(params)
+```
+
+#### Parameters
+
+<ParamField path="params" type="LibSpawnVehicleParams" required>
+  Vehicle spawn configuration
+  
+  <Expandable title="properties">
+    <ParamField path="model" type="integer" required>
+      Vehicle model hash
+    </ParamField>
+    
+    <ParamField path="spawnSource" type="integer | vector3 | vector4" required>
+      Ped ID or coordinates to spawn at
+    </ParamField>
+    
+    <ParamField path="warp" type="boolean | integer">
+      Ped ID to warp into vehicle, or `true` if `spawnSource` is a ped
+    </ParamField>
+    
+    <ParamField path="props" type="table">
+      Vehicle properties (see [ox_lib vehicle properties](https://coxdocs.dev/ox_lib/Modules/VehicleProperties/Client#vehicle-properties))
+    </ParamField>
+    
+    <ParamField path="bucket" type="integer">
+      Routing bucket to spawn vehicle in
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+#### Returns
+
+- `netId` (integer) - Network ID of the spawned vehicle
+- `veh` (number) - Server-side vehicle entity handle
+
+#### Example
+
+```lua
+-- Spawn at coordinates
+local netId, veh = qbx.spawnVehicle({
+    model = `adder`,
+    spawnSource = vec4(100.0, 200.0, 30.0, 90.0),
+    props = {
+        plate = 'MYPLATE',
+        color1 = 12,
+        color2 = 12
+    }
+})
+
+-- Spawn and warp player into it
+local ped = GetPlayerPed(source)
+local netId, veh = qbx.spawnVehicle({
+    model = `t20`,
+    spawnSource = ped,
+    warp = true,  -- Warp the ped into the vehicle
+    bucket = 1
+})
+```
+
+<Note>
+On the client, wait for the vehicle to exist before using it:
+
+```lua
+local vehicle = lib.waitFor(function()
+    if NetworkDoesEntityExistWithNetworkId(netId) then
+        return NetToVeh(netId)
+    end
+end)
+```
+</Note>
+
+## Client-Side Vehicle Utilities
+
+### qbx.deleteVehicle
+
+Deletes a vehicle and returns whether it was successful.
+
+```lua
+qbx.deleteVehicle(vehicle)
+```
+
+#### Example
+
+```lua
+local vehicle = GetVehiclePedIsIn(PlayerPedId(), false)
+local deleted = qbx.deleteVehicle(vehicle)
+
+if deleted then
+    print('Vehicle deleted successfully')
+else
+    print('Failed to delete vehicle')
+end
+```
+
+### qbx.getVehicleDisplayName
+
+Gets the display name of a vehicle model.
+
+```lua
+qbx.getVehicleDisplayName(vehicle)
+```
+
+#### Example
+
+```lua
+local vehicle = GetVehiclePedIsIn(PlayerPedId(), false)
+local name = qbx.getVehicleDisplayName(vehicle)  -- "Adder"
+```
+
+### qbx.getVehicleMakeName
+
+Gets the manufacturer/brand name of a vehicle.
+
+```lua
+qbx.getVehicleMakeName(vehicle)
+```
+
+#### Example
+
+```lua
+local vehicle = GetVehiclePedIsIn(PlayerPedId(), false)
+local make = qbx.getVehicleMakeName(vehicle)  -- "Truffade"
+```
+
+### Vehicle Extras
+
+Utilities for managing vehicle extras (visual modifications).
+
+```lua
+-- Set a single extra
+qbx.setVehicleExtra(vehicle, extra, enable)
+
+-- Enable all extras
+qbx.resetVehicleExtras(vehicle)
+
+-- Set multiple extras
+qbx.setVehicleExtras(vehicle, extras)
+```
+
+#### Example
+
+```lua
+local vehicle = GetVehiclePedIsIn(PlayerPedId(), false)
+
+-- Enable extra 1 (e.g., roof rack)
+qbx.setVehicleExtra(vehicle, 1, true)
+
+-- Set multiple extras at once
+qbx.setVehicleExtras(vehicle, {
+    [1] = true,   -- Enable extra 1
+    [2] = false,  -- Disable extra 2
+    [3] = true    -- Enable extra 3
+})
+```
+
+## Drawing Utilities (Client)
+
+### qbx.drawText2d
+
+Draws 2D text on screen for a single frame.
+
+```lua
+qbx.drawText2d(params)
+```
+
+#### Parameters
+
+<ParamField path="params" type="LibDrawText2DParams" required>
+  <Expandable title="properties">
+    <ParamField path="text" type="string" required>
+      The text to display
+    </ParamField>
+    <ParamField path="coords" type="vector2" required>
+      Screen coordinates (0.0 to 1.0)
+    </ParamField>
+    <ParamField path="scale" type="integer" default="0.35">
+      Text scale
+    </ParamField>
+    <ParamField path="font" type="integer" default="4">
+      Font ID
+    </ParamField>
+    <ParamField path="color" type="vector4">
+      RGBA color (default: white)
+    </ParamField>
+    <ParamField path="width" type="number" default="1.0">
+      Text width
+    </ParamField>
+    <ParamField path="height" type="number" default="1.0">
+      Text height
+    </ParamField>
+    <ParamField path="enableDropShadow" type="boolean">
+      Enable drop shadow
+    </ParamField>
+    <ParamField path="enableOutline" type="boolean">
+      Enable text outline
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+#### Example
+
+```lua
+CreateThread(function()
+    while true do
+        qbx.drawText2d({
+            text = 'Press E to interact',
+            coords = vec2(0.5, 0.9),  -- Bottom center
+            scale = 0.5,
+            color = vec4(255, 255, 255, 255),
+            enableOutline = true
+        })
+        Wait(0)
+    end
+end)
+```
+
+### qbx.drawText3d
+
+Draws 3D text in world space for a single frame.
+
+```lua
+qbx.drawText3d(params)
+```
+
+#### Parameters
+
+<ParamField path="params" type="LibDrawText3DParams" required>
+  <Expandable title="properties">
+    <ParamField path="text" type="string" required>
+      The text to display
+    </ParamField>
+    <ParamField path="coords" type="vector3" required>
+      World coordinates
+    </ParamField>
+    <ParamField path="scale" type="integer | vector2" default="vec2(0.35, 0.35)">
+      Text scale (can be number or vector2)
+    </ParamField>
+    <ParamField path="font" type="integer" default="4">
+      Font ID
+    </ParamField>
+    <ParamField path="color" type="vector4">
+      RGBA color (default: white)
+    </ParamField>
+    <ParamField path="disableDrawRect" type="boolean">
+      Disable background rectangle
+    </ParamField>
+    <ParamField path="enableDropShadow" type="boolean">
+      Enable drop shadow
+    </ParamField>
+    <ParamField path="enableOutline" type="boolean">
+      Enable text outline
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+#### Example
+
+```lua
+local targetCoords = vec3(100.0, 200.0, 30.0)
+
+CreateThread(function()
+    while true do
+        qbx.drawText3d({
+            text = 'Vehicle Shop',
+            coords = targetCoords,
+            scale = 0.5,
+            color = vec4(255, 255, 0, 255),  -- Yellow
+            enableOutline = true
+        })
+        Wait(0)
+    end
+end)
+```
+
+## Location Utilities (Client)
+
+### qbx.getStreetName
+
+Gets the street names at coordinates.
+
+```lua
+qbx.getStreetName(coords)
+```
+
+#### Returns
+
+- (table) - `{ main: string, cross: string }`
+
+#### Example
+
+```lua
+local coords = GetEntityCoords(PlayerPedId())
+local streets = qbx.getStreetName(coords)
+
+print(streets.main)   -- "Vinewood Blvd"
+print(streets.cross)  -- "Mirror Park Blvd"
+```
+
+### qbx.getZoneName
+
+Gets the zone name at coordinates.
+
+```lua
+qbx.getZoneName(coords)
+```
+
+#### Example
+
+```lua
+local coords = GetEntityCoords(PlayerPedId())
+local zone = qbx.getZoneName(coords)  -- "Vinewood"
+```
+
+## Ped Utilities (Client)
+
+### qbx.isWearingGloves
+
+Checks if the local ped is wearing gloves.
+
+```lua
+qbx.isWearingGloves()
+```
+
+#### Example
+
+```lua
+if qbx.isWearingGloves() then
+    print('No fingerprints will be left')
+else
+    print('Fingerprints detected')
+end
+```
+
+### qbx.isWearingDuffelbag
+
+Checks if the local ped is wearing a duffel bag.
+
+```lua
+qbx.isWearingDuffelbag()
+```
+
+#### Example
+
+```lua
+if qbx.isWearingDuffelbag() then
+    print('Can carry extra items')
+end
+```
+
+## State Bag Utilities (Client)
+
+### qbx.getEntityAndNetIdFromBagName
+
+Converts a state bag name to entity handle and network ID.
+
+```lua
+qbx.getEntityAndNetIdFromBagName(bagName)
+```
+
+#### Returns
+
+- `entity` (integer) - Entity handle
+- `netId` (integer) - Network ID
+
+#### Example
+
+```lua
+local entity, netId = qbx.getEntityAndNetIdFromBagName('entity:12345')
+```
+
+### qbx.entityStateHandler
+
+Creates a state bag change handler for entities.
+
+```lua
+qbx.entityStateHandler(keyFilter, cb)
+```
+
+#### Parameters
+
+- `keyFilter` (string) - State bag key to watch
+- `cb` (function) - Callback: `function(entity, netId, value, bagName)`
+
+#### Example
+
+```lua
+qbx.entityStateHandler('vehicleLocked', function(entity, netId, locked, bagName)
+    if locked then
+        print('Vehicle', entity, 'was locked')
+    else
+        print('Vehicle', entity, 'was unlocked')
+    end
+end)
+```
+
+## Best Practices
+
+1. **Use appropriate utilities** - Choose the right tool for the job (e.g., `qbx.table.size` for dictionaries, `#` for arrays)
+
+2. **Cache vehicle references** - Don't repeatedly call vehicle functions in loops:
+   ```lua
+   -- Bad
+   for i = 1, 100 do
+       local name = qbx.getVehicleDisplayName(GetVehiclePedIsIn(PlayerPedId(), false))
+   end
+   
+   -- Good
+   local vehicle = GetVehiclePedIsIn(PlayerPedId(), false)
+   local name = qbx.getVehicleDisplayName(vehicle)
+   ```
+
+3. **Validate entity existence** - Always check if entities exist before using them:
+   ```lua
+   local vehicle = GetVehiclePedIsIn(PlayerPedId(), false)
+   if DoesEntityExist(vehicle) then
+       local plate = qbx.getVehiclePlate(vehicle)
+   end
+   ```
+
+4. **Use server-side spawning** - Prefer `qbx.spawnVehicle` over client-side spawning for better security and synchronization

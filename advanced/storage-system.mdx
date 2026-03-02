@@ -1,0 +1,441 @@
+---
+title: Storage System
+description: Database abstraction layer for player data, bans, and character management
+---
+
+The storage system provides a clean abstraction layer between Qbox Core and the database. All database operations go through the `StorageFunctions` interface, making it easy to swap storage implementations or modify queries.
+
+## Architecture
+
+The storage system is organized as follows:
+
+```
+server/storage/
+├── main.lua        - Main export point
+└── players.lua     - Player/character data operations
+```
+
+All storage functions are defined in `server/storage/players.lua` and exported via `server/storage/main.lua`.
+
+## Storage Functions
+
+The complete `StorageFunctions` interface is defined in `types.lua:88`.
+
+### Ban Management
+
+#### insertBan
+
+Create a new ban entry in the database.
+
+```lua
+---@param request InsertBanRequest
+---@return boolean success
+---@return ErrorResult? errorResult
+local success, err = storage.insertBan({
+    name = "PlayerName",
+    license = "license:abc123",
+    discordId = "123456789",
+    ip = "192.168.1.1",
+    reason = "Cheating",
+    bannedBy = "Admin",
+    expiration = os.time() + (86400 * 7)  -- 7 days
+})
+```
+
+At least one identifier (license, discordId, or ip) is required (server/storage/players.lua:43).
+
+#### fetchBan
+
+Retrieve ban information for a player.
+
+```lua
+---@param request GetBanRequest
+---@return BanEntity?
+local ban = storage.fetchBan({
+    license = "license:abc123"
+})
+
+if ban then
+    print(ban.reason)  -- Ban reason
+    print(ban.expire)  -- Unix timestamp when ban expires
+end
+```
+
+#### deleteBan
+
+Remove a ban from the database.
+
+```lua
+---@param request GetBanRequest
+storage.deleteBan({
+    license = "license:abc123"
+})
+```
+
+### Player Data Management
+
+#### upsertPlayerEntity
+
+Create or update a player's character data.
+
+```lua
+---@param request UpsertPlayerRequest
+storage.upsertPlayerEntity({
+    playerEntity = {
+        userId = 1,
+        citizenid = "ABC12345",
+        cid = 1,
+        license = "license:abc123",
+        name = "John Doe",
+        money = { cash = 5000, bank = 10000, crypto = 0 },
+        charinfo = {
+            firstname = "John",
+            lastname = "Doe",
+            birthdate = "1990-01-01",
+            nationality = "American",
+            cid = 1,
+            gender = 0,
+            -- ... other charinfo fields
+        },
+        job = { name = "police", grade = { level = 2 } },
+        gang = { name = "none", grade = { level = 0 } },
+        position = vector4(0, 0, 0, 0),
+        metadata = { health = 200, armor = 0 },
+        lastLoggedOut = os.time()
+    },
+    position = vector3(0, 0, 0)
+})
+```
+
+This function uses MySQL's `ON DUPLICATE KEY UPDATE` to handle both inserts and updates (server/storage/players.lua:96).
+
+#### fetchPlayerEntity
+
+Retrieve a character by citizen ID.
+
+```lua
+---@param citizenId string
+---@return PlayerEntity?
+local player = storage.fetchPlayerEntity("ABC12345")
+
+if player then
+    print(player.name)
+    print(player.money.cash)
+    print(player.charinfo.firstname)
+end
+```
+
+JSON fields are automatically decoded (server/storage/players.lua:151).
+
+#### fetchAllPlayerEntities
+
+Get all characters belonging to a license.
+
+```lua
+---@param license2 string
+---@param license? string
+---@return PlayerEntity[]
+local characters = storage.fetchAllPlayerEntities(
+    "license2:abc123",
+    "license:def456"
+)
+
+for i = 1, #characters do
+    print(characters[i].charinfo.firstname)
+end
+```
+
+#### searchPlayerEntities
+
+Search for players using filters.
+
+```lua
+---@param filters table<string, any>
+---@return Player[]
+
+-- Search by license
+local results = storage.searchPlayerEntities({
+    license = "license:abc123"
+})
+
+-- Search by job
+local cops = storage.searchPlayerEntities({
+    job = "police"
+})
+
+-- Search by gang
+local gangMembers = storage.searchPlayerEntities({
+    gang = "ballas"
+})
+
+-- Search by metadata (exact match)
+local jailed = storage.searchPlayerEntities({
+    metadata = {
+        injail = 60,
+        strict = true  -- Use strict matching for exact values
+    }
+})
+
+-- Search by metadata (range)
+local lowHealth = storage.searchPlayerEntities({
+    metadata = {
+        health = 50  -- Without strict, finds players with health >= 50
+    }
+})
+```
+
+The search uses JSON extraction for job, gang, and metadata fields (server/storage/players.lua:178-205).
+
+#### deletePlayer
+
+Delete a character and all associated data.
+
+```lua
+---@param citizenId string
+---@return boolean success
+local success = storage.deletePlayer("ABC12345")
+```
+
+This deletes data from all tables configured in `characterDataTables` (server/storage/players.lua:231).
+
+#### fetchPlayerSkin
+
+Get the active skin for a character.
+
+```lua
+---@param citizenId string
+---@return PlayerSkin?
+local skin = storage.fetchPlayerSkin("ABC12345")
+
+if skin then
+    print(skin.model)
+    print(skin.skin)  -- JSON string of skin data
+end
+```
+
+### Group Management
+
+#### addPlayerToJob
+
+Add or update a player's job.
+
+```lua
+---@param citizenid string
+---@param group string
+---@param grade integer
+storage.addPlayerToJob("ABC12345", "police", 2)
+```
+
+Uses `ON DUPLICATE KEY UPDATE` to handle existing jobs (server/storage/players.lua:278).
+
+#### addPlayerToGang
+
+Add or update a player's gang.
+
+```lua
+---@param citizenid string
+---@param group string
+---@param grade integer
+storage.addPlayerToGang("ABC12345", "ballas", 1)
+```
+
+#### fetchPlayerGroups
+
+Get all jobs and gangs for a player.
+
+```lua
+---@param citizenid string
+---@return table<string, integer> jobs
+---@return table<string, integer> gangs
+local jobs, gangs = storage.fetchPlayerGroups("ABC12345")
+
+-- jobs = { police = 2, mechanic = 0 }
+-- gangs = { ballas = 1 }
+```
+
+#### removePlayerFromJob
+
+Remove a job from a player.
+
+```lua
+---@param citizenid string
+---@param group string
+storage.removePlayerFromJob("ABC12345", "police")
+```
+
+#### removePlayerFromGang
+
+Remove a gang from a player.
+
+```lua
+---@param citizenid string
+---@param group string
+storage.removePlayerFromGang("ABC12345", "ballas")
+```
+
+### Unique ID Validation
+
+#### fetchIsUnique
+
+Check if a value is unique across all characters.
+
+```lua
+---@param type UniqueIdType
+---@param value string|number
+---@return boolean isUnique
+
+-- Check if citizen ID is available
+local unique = storage.fetchIsUnique('citizenid', 'ABC12345')
+
+-- Check if phone number is available
+local phoneAvailable = storage.fetchIsUnique('PhoneNumber', '555-1234')
+
+-- Check other unique fields
+storage.fetchIsUnique('AccountNumber', '12345678')
+storage.fetchIsUnique('FingerId', 'AB123CD456')
+storage.fetchIsUnique('WalletId', 'wallet_123')
+storage.fetchIsUnique('SerialNumber', 'SN123456')
+```
+
+Supported types (server/storage/players.lua:260-267):
+- `citizenid` - Character ID
+- `AccountNumber` - Bank account number
+- `PhoneNumber` - Phone number
+- `FingerId` - Fingerprint ID
+- `WalletId` - Wallet ID
+- `SerialNumber` - Phone serial number
+
+### User Management
+
+#### createUser
+
+Create a new user entry.
+
+```lua
+---@param identifiers table<PlayerIdentifier, string>
+---@return number? userId
+local userId = storage.createUser({
+    username = "Player",
+    license = "license:abc123",
+    license2 = "license2:def456",
+    fivem = "fivem:123456",
+    discord = "discord:789012"
+})
+```
+
+#### fetchUserByIdentifier
+
+Get user ID from any identifier.
+
+```lua
+---@param identifier string
+---@return integer? userId
+local userId = storage.fetchUserByIdentifier("license:abc123")
+```
+
+## Database Schema
+
+### users Table
+
+```sql
+CREATE TABLE IF NOT EXISTS `users` (
+    `userId` int UNSIGNED NOT NULL AUTO_INCREMENT,
+    `username` varchar(255) DEFAULT NULL,
+    `license` varchar(50) DEFAULT NULL,
+    `license2` varchar(50) DEFAULT NULL,
+    `fivem` varchar(20) DEFAULT NULL,
+    `discord` varchar(30) DEFAULT NULL,
+    PRIMARY KEY (`userId`)
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4;
+```
+
+### players Table
+
+Stores character data with JSON columns for:
+- `money` - Cash, bank, crypto balances
+- `charinfo` - Character information (name, birthdate, etc.)
+- `job` - Current job data (can be null)
+- `gang` - Current gang data (can be null)
+- `position` - Last known position (vec4)
+- `metadata` - Character metadata (health, armor, etc.)
+
+### player_groups Table
+
+Stores all jobs and gangs a player has access to:
+
+```sql
+CREATE TABLE IF NOT EXISTS `player_groups` (
+    `citizenid` varchar(50) NOT NULL,
+    `type` enum('job','gang') NOT NULL,
+    `group` varchar(50) NOT NULL,
+    `grade` int NOT NULL,
+    UNIQUE KEY `citizenid_type_group` (`citizenid`, `type`, `group`)
+);
+```
+
+## Maintenance Commands
+
+### convertjobs
+
+Copies primary job/gang from players table to player_groups table.
+
+```bash
+# Server console only
+convertjobs
+```
+
+This command is idempotent and can be run multiple times safely (server/storage/players.lua:351).
+
+### cleanplayergroups
+
+Removes invalid groups that no longer exist in the configuration.
+
+```bash
+# Server console only
+cleanplayergroups
+```
+
+Automatically runs on startup if convar is set:
+
+```bash
+setr qbx:cleanPlayerGroups "true"
+```
+
+## Error Handling
+
+The storage layer includes validation and error handling:
+
+```lua
+-- Ban operations return success and error
+local success, err = storage.insertBan(request)
+if not success then
+    print(err.code)     -- 'no_identifier'
+    print(err.message)  -- Human-readable error
+end
+
+-- Table existence checks
+if not doesTableExist('some_table') then
+    warn('Table does not exist')
+end
+```
+
+## Performance Considerations
+
+- Uses prepared statements for all queries
+- JSON columns indexed with `JSON_EXTRACT` for searches
+- Transaction support for multi-table deletes
+- Async operations using `MySQL.*.await()` pattern
+
+## Example: Custom Storage Implementation
+
+You can replace the storage implementation by creating your own module:
+
+```lua
+-- server/storage/main.lua
+local customStorage = require 'server.storage.custom'
+
+---@type StorageFunctions
+return customStorage
+```
+
+Your implementation must provide all functions defined in the `StorageFunctions` type.

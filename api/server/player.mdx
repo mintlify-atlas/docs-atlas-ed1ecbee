@@ -1,0 +1,543 @@
+---
+title: Player Management
+description: Player login, data management, and offline player functions
+---
+
+## Login & Authentication
+
+### Login
+
+Login a player to the server with their character data.
+
+<ParamField path="source" type="Source" required>
+  Player server ID
+</ParamField>
+
+<ParamField path="citizenid" type="string">
+  Citizen ID for existing character
+</ParamField>
+
+<ParamField path="newData" type="PlayerEntity">
+  New character data if creating a character
+</ParamField>
+
+<ResponseField name="success" type="boolean">
+  `true` if login was successful, `false` otherwise
+</ResponseField>
+
+```lua
+-- Login existing character
+local success = exports.qbx_core:Login(source, 'ABC12345')
+
+-- Login new character
+local newData = {
+    charinfo = {
+        firstname = 'John',
+        lastname = 'Doe',
+        birthdate = '01-01-1990',
+        gender = 0
+    }
+}
+local success = exports.qbx_core:Login(source, nil, newData)
+```
+
+### Logout
+
+Logout a player and save their data.
+
+<ParamField path="source" type="Source" required>
+  Player server ID
+</ParamField>
+
+```lua
+exports.qbx_core:Logout(source)
+```
+
+## Offline Player Management
+
+### GetOfflinePlayer
+
+Get a player object for an offline player by citizen ID.
+
+<ParamField path="citizenid" type="string" required>
+  The citizen ID of the offline player
+</ParamField>
+
+<ResponseField name="player" type="Player | nil">
+  Player object if found in database, otherwise `nil`
+</ResponseField>
+
+```lua
+local offlinePlayer = exports.qbx_core:GetOfflinePlayer('ABC12345')
+if offlinePlayer then
+    print('Offline player name: ' .. offlinePlayer.PlayerData.name)
+    -- Modify offline player
+    exports.qbx_core:AddMoney(offlinePlayer.PlayerData.citizenid, 'bank', 1000, 'Admin grant')
+end
+```
+
+## Job Management
+
+### SetJob
+
+Set a player's primary job, replacing their current primary job.
+
+<ParamField path="identifier" type="Source | string" required>
+  Player source or citizen ID
+</ParamField>
+
+<ParamField path="jobName" type="string" required>
+  Name of the job to set
+</ParamField>
+
+<ParamField path="grade" type="integer">
+  Job grade level (defaults to 0)
+</ParamField>
+
+<ResponseField name="success" type="boolean">
+  `true` if job was set successfully
+</ResponseField>
+
+<ResponseField name="errorResult" type="ErrorResult | nil">
+  Error details if the operation failed
+</ResponseField>
+
+```lua
+-- Set by source
+local success, err = exports.qbx_core:SetJob(source, 'police', 3)
+if not success then
+    print('Failed to set job: ' .. err.message)
+end
+
+-- Set for offline player
+exports.qbx_core:SetJob('ABC12345', 'mechanic', 1)
+```
+
+### SetJobDuty
+
+Set a player's on-duty status for their job.
+
+<ParamField path="identifier" type="Source | string" required>
+  Player source or citizen ID
+</ParamField>
+
+<ParamField path="onDuty" type="boolean" required>
+  Whether the player should be on duty
+</ParamField>
+
+```lua
+-- Set player on duty
+exports.qbx_core:SetJobDuty(source, true)
+
+-- Set player off duty
+exports.qbx_core:SetJobDuty(source, false)
+```
+
+### AddPlayerToJob
+
+Add a player to a job or update their grade if already in the job.
+
+<ParamField path="citizenid" type="string" required>
+  Player's citizen ID
+</ParamField>
+
+<ParamField path="jobName" type="string" required>
+  Job name to add player to
+</ParamField>
+
+<ParamField path="grade" type="integer">
+  Job grade (defaults to 0)
+</ParamField>
+
+<ResponseField name="success" type="boolean">
+  `true` if player was added successfully
+</ResponseField>
+
+<ResponseField name="errorResult" type="ErrorResult | nil">
+  Error details if the operation failed
+</ResponseField>
+
+```lua
+local success, err = exports.qbx_core:AddPlayerToJob('ABC12345', 'police', 2)
+if success then
+    print('Player added to police at grade 2')
+end
+```
+
+### RemovePlayerFromJob
+
+Remove a player from a job. If it's their primary job, sets primary to unemployed.
+
+<ParamField path="citizenid" type="string" required>
+  Player's citizen ID
+</ParamField>
+
+<ParamField path="jobName" type="string" required>
+  Job name to remove player from
+</ParamField>
+
+<ResponseField name="success" type="boolean">
+  `true` if player was removed successfully
+</ResponseField>
+
+<ResponseField name="errorResult" type="ErrorResult | nil">
+  Error details if the operation failed
+</ResponseField>
+
+```lua
+local success = exports.qbx_core:RemovePlayerFromJob('ABC12345', 'police')
+```
+
+### SetPlayerPrimaryJob
+
+Set a player's primary job (must already have the job).
+
+<ParamField path="citizenid" type="string" required>
+  Player's citizen ID
+</ParamField>
+
+<ParamField path="jobName" type="string" required>
+  Job name to set as primary
+</ParamField>
+
+<ResponseField name="success" type="boolean">
+  `true` if primary job was set
+</ResponseField>
+
+<ResponseField name="errorResult" type="ErrorResult | nil">
+  Error details if the operation failed
+</ResponseField>
+
+```lua
+-- Switch between multiple jobs
+exports.qbx_core:SetPlayerPrimaryJob('ABC12345', 'mechanic')
+```
+
+## Gang Management
+
+### SetGang
+
+Set a player's primary gang, replacing their current primary gang.
+
+<ParamField path="identifier" type="Source | string" required>
+  Player source or citizen ID
+</ParamField>
+
+<ParamField path="gangName" type="string" required>
+  Name of the gang to set
+</ParamField>
+
+<ParamField path="grade" type="integer">
+  Gang grade level (defaults to 0)
+</ParamField>
+
+<ResponseField name="success" type="boolean">
+  `true` if gang was set successfully
+</ResponseField>
+
+<ResponseField name="errorResult" type="ErrorResult | nil">
+  Error details if the operation failed
+</ResponseField>
+
+```lua
+local success, err = exports.qbx_core:SetGang(source, 'ballas', 2)
+if not success then
+    print('Failed to set gang: ' .. err.message)
+end
+```
+
+### AddPlayerToGang
+
+Add a player to a gang or update their grade if already in the gang.
+
+<ParamField path="citizenid" type="string" required>
+  Player's citizen ID
+</ParamField>
+
+<ParamField path="gangName" type="string" required>
+  Gang name to add player to
+</ParamField>
+
+<ParamField path="grade" type="integer">
+  Gang grade (defaults to 0)
+</ParamField>
+
+<ResponseField name="success" type="boolean">
+  `true` if player was added successfully
+</ResponseField>
+
+<ResponseField name="errorResult" type="ErrorResult | nil">
+  Error details if the operation failed
+</ResponseField>
+
+```lua
+exports.qbx_core:AddPlayerToGang('ABC12345', 'ballas', 1)
+```
+
+### RemovePlayerFromGang
+
+Remove a player from a gang. If it's their primary gang, sets primary to 'none'.
+
+<ParamField path="citizenid" type="string" required>
+  Player's citizen ID
+</ParamField>
+
+<ParamField path="gangName" type="string" required>
+  Gang name to remove player from
+</ParamField>
+
+<ResponseField name="success" type="boolean">
+  `true` if player was removed successfully
+</ResponseField>
+
+<ResponseField name="errorResult" type="ErrorResult | nil">
+  Error details if the operation failed
+</ResponseField>
+
+```lua
+exports.qbx_core:RemovePlayerFromGang('ABC12345', 'ballas')
+```
+
+## Player Data Management
+
+### SetPlayerData
+
+Set a player data field.
+
+<ParamField path="identifier" type="Source | string" required>
+  Player source or citizen ID
+</ParamField>
+
+<ParamField path="key" type="string" required>
+  Data field name
+</ParamField>
+
+<ParamField path="value" type="any" required>
+  Value to set
+</ParamField>
+
+```lua
+exports.qbx_core:SetPlayerData(source, 'position', vector4(0, 0, 0, 0))
+```
+
+### UpdatePlayerData
+
+Trigger a player data update sync to client.
+
+<ParamField path="identifier" type="Source | string" required>
+  Player source or citizen ID
+</ParamField>
+
+```lua
+exports.qbx_core:UpdatePlayerData(source)
+```
+
+### SetMetadata
+
+Set a metadata field for a player.
+
+<ParamField path="identifier" type="Source | string" required>
+  Player source or citizen ID
+</ParamField>
+
+<ParamField path="metadata" type="string" required>
+  Metadata field name (supports dot notation for nested fields)
+</ParamField>
+
+<ParamField path="value" type="any" required>
+  Value to set
+</ParamField>
+
+```lua
+-- Set top-level metadata
+exports.qbx_core:SetMetadata(source, 'hunger', 75)
+
+-- Set nested metadata
+exports.qbx_core:SetMetadata(source, 'jobrep.trucker', 100)
+```
+
+### GetMetadata
+
+Get a metadata field from a player.
+
+<ParamField path="identifier" type="Source | string" required>
+  Player source or citizen ID
+</ParamField>
+
+<ParamField path="metadata" type="string" required>
+  Metadata field name (supports dot notation)
+</ParamField>
+
+<ResponseField name="value" type="any">
+  The metadata value
+</ResponseField>
+
+```lua
+local hunger = exports.qbx_core:GetMetadata(source, 'hunger')
+local truckerRep = exports.qbx_core:GetMetadata(source, 'jobrep.trucker')
+```
+
+### SetCharInfo
+
+Set a character info field.
+
+<ParamField path="identifier" type="Source | string" required>
+  Player source or citizen ID
+</ParamField>
+
+<ParamField path="charInfo" type="string" required>
+  Character info field name
+</ParamField>
+
+<ParamField path="value" type="any" required>
+  Value to set
+</ParamField>
+
+```lua
+exports.qbx_core:SetCharInfo(source, 'phone', '555-1234')
+```
+
+## Money Management
+
+### AddMoney
+
+Add money to a player's account.
+
+<ParamField path="identifier" type="Source | string" required>
+  Player source or citizen ID
+</ParamField>
+
+<ParamField path="moneyType" type="MoneyType" required>
+  Type of money: `'cash'`, `'bank'`, `'crypto'`
+</ParamField>
+
+<ParamField path="amount" type="number" required>
+  Amount to add
+</ParamField>
+
+<ParamField path="reason" type="string">
+  Reason for the transaction (for logging)
+</ParamField>
+
+<ResponseField name="success" type="boolean">
+  `true` if money was added successfully
+</ResponseField>
+
+```lua
+local success = exports.qbx_core:AddMoney(source, 'cash', 500, 'Mission reward')
+if success then
+    print('Added $500 cash')
+end
+```
+
+### RemoveMoney
+
+Remove money from a player's account.
+
+<ParamField path="identifier" type="Source | string" required>
+  Player source or citizen ID
+</ParamField>
+
+<ParamField path="moneyType" type="MoneyType" required>
+  Type of money: `'cash'`, `'bank'`, `'crypto'`
+</ParamField>
+
+<ParamField path="amount" type="number" required>
+  Amount to remove
+</ParamField>
+
+<ParamField path="reason" type="string">
+  Reason for the transaction (for logging)
+</ParamField>
+
+<ResponseField name="success" type="boolean">
+  `true` if money was removed successfully
+</ResponseField>
+
+```lua
+local success = exports.qbx_core:RemoveMoney(source, 'cash', 100, 'Purchase')
+if not success then
+    print('Not enough cash')
+end
+```
+
+### SetMoney
+
+Set a player's money to a specific amount.
+
+<ParamField path="identifier" type="Source | string" required>
+  Player source or citizen ID
+</ParamField>
+
+<ParamField path="moneyType" type="MoneyType" required>
+  Type of money: `'cash'`, `'bank'`, `'crypto'`
+</ParamField>
+
+<ParamField path="amount" type="number" required>
+  Amount to set
+</ParamField>
+
+<ParamField path="reason" type="string">
+  Reason for the transaction (for logging)
+</ParamField>
+
+<ResponseField name="success" type="boolean">
+  `true` if money was set successfully
+</ResponseField>
+
+```lua
+exports.qbx_core:SetMoney(source, 'bank', 5000, 'Admin grant')
+```
+
+### GetMoney
+
+Get the amount of money a player has.
+
+<ParamField path="identifier" type="Source | string" required>
+  Player source or citizen ID
+</ParamField>
+
+<ParamField path="moneyType" type="MoneyType" required>
+  Type of money to check
+</ParamField>
+
+<ResponseField name="amount" type="number | boolean">
+  Amount of money, or `false` if money type doesn't exist
+</ResponseField>
+
+```lua
+local cash = exports.qbx_core:GetMoney(source, 'cash')
+print('Player has $' .. cash .. ' cash')
+```
+
+## Save Functions
+
+### Save
+
+Save an online player's data to the database.
+
+<ParamField path="source" type="Source" required>
+  Player server ID
+</ParamField>
+
+```lua
+exports.qbx_core:Save(source)
+```
+
+### SaveOffline
+
+Save an offline player's data to the database.
+
+<ParamField path="playerData" type="PlayerEntity" required>
+  Player data object to save
+</ParamField>
+
+```lua
+local offlinePlayer = exports.qbx_core:GetOfflinePlayer('ABC12345')
+if offlinePlayer then
+    -- Modify data
+    offlinePlayer.PlayerData.metadata.hunger = 100
+    -- Save changes
+    exports.qbx_core:SaveOffline(offlinePlayer.PlayerData)
+end
+```

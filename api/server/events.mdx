@@ -1,0 +1,368 @@
+---
+title: Server Events
+description: Server-side events for player and server lifecycle management
+---
+
+## Connection Events
+
+### playerConnecting
+
+Triggered when a player is attempting to connect to the server.
+
+**Parameters:**
+- `name` (string) - Player's name
+- `deferrals` (Deferrals) - Deferrals object for async connection handling
+
+**Handled by:** `server/events.lua:78`
+
+```lua
+AddEventHandler('playerConnecting', function(name, setKickReason, deferrals)
+    local src = source
+    -- Custom connection logic
+end)
+```
+
+**Built-in checks:**
+- Server closed status
+- License validation
+- Duplicate license detection
+- Ban status
+- Whitelist verification
+- Database user creation
+- Queue system integration
+
+### playerJoining
+
+Triggered when a player is joining the server (before fully connected).
+
+**Handled by:** `server/events.lua:20`
+
+```lua
+AddEventHandler('playerJoining', function()
+    local src = source
+    local license = GetPlayerIdentifierByType(src, 'license')
+    -- Custom logic
+end)
+```
+
+**Built-in functionality:**
+- Removes player from queue
+- Checks for duplicate licenses
+- Marks license as in use
+
+### playerDropped
+
+Triggered when a player disconnects from the server.
+
+**Parameters:**
+- `reason` (string) - Disconnect reason
+
+**Handled by:** `server/events.lua:37`
+
+```lua
+AddEventHandler('playerDropped', function(reason)
+    local src = source
+    local player = exports.qbx_core:GetPlayer(src)
+    print(player.PlayerData.name .. ' left: ' .. reason)
+end)
+```
+
+**Built-in functionality:**
+- Clears used license
+- Updates global player count
+- Saves player data
+- Logs disconnect to webhook
+- Cleans up routing bucket data
+
+## Player Lifecycle Events
+
+### QBCore:Server:PlayerLoaded
+
+Triggered when a player successfully loads into the server.
+
+**Parameters:**
+- `Player` (table) - The player object
+
+**Triggered by:** `server/player.lua:1033`
+
+```lua
+RegisterNetEvent('QBCore:Server:PlayerLoaded')
+AddEventHandler('QBCore:Server:PlayerLoaded', function(player)
+    local src = player.PlayerData.source
+    print(player.PlayerData.name .. ' has loaded')
+end)
+```
+
+### QBCore:Server:OnPlayerLoaded
+
+Client-side sync event when player loads.
+
+**Handled by:** `server/events.lua:189`
+
+**Triggers:**
+- Sets player state `isLoggedIn` to `true`
+
+```lua
+RegisterNetEvent('QBCore:Server:OnPlayerLoaded', function()
+    local src = source
+    -- Player is now fully loaded
+end)
+```
+
+### QBCore:Server:OnPlayerUnload
+
+Triggered when a player is being unloaded/logged out.
+
+**Parameters:**
+- `source` (Source) - Player server ID
+
+**Handled by:** `server/events.lua:194`
+
+```lua
+AddEventHandler('QBCore:Server:OnPlayerUnload', function(source)
+    print('Player ' .. source .. ' is logging out')
+end)
+```
+
+**Built-in functionality:**
+- Sets player state `isLoggedIn` to `false`
+
+### qbx_core:server:playerLoggedOut
+
+Triggered after a player has fully logged out.
+
+**Parameters:**
+- `source` (Source) - Player server ID
+
+**Triggered by:** `server/player.lua:727`
+
+```lua
+AddEventHandler('qbx_core:server:playerLoggedOut', function(source)
+    print('Player ' .. source .. ' logged out')
+end)
+```
+
+## Job & Gang Events
+
+### QBCore:Server:OnJobUpdate
+
+Triggered when a player's job is updated.
+
+**Parameters:**
+- `source` (Source) - Player server ID
+- `job` (PlayerJob) - New job data
+
+**Triggered by:** `server/player.lua:211`, `server/player.lua:979`
+
+```lua
+AddEventHandler('QBCore:Server:OnJobUpdate', function(source, job)
+    print(GetPlayerName(source) .. ' job changed to: ' .. job.label)
+end)
+```
+
+### QBCore:Server:OnGangUpdate
+
+Triggered when a player's gang is updated.
+
+**Parameters:**
+- `source` (Source) - Player server ID
+- `gang` (PlayerGang) - New gang data
+
+**Triggered by:** `server/player.lua:435`, `server/player.lua:1019`
+
+```lua
+AddEventHandler('QBCore:Server:OnGangUpdate', function(source, gang)
+    print(GetPlayerName(source) .. ' gang changed to: ' .. gang.label)
+end)
+```
+
+### qbx_core:server:onGroupUpdate
+
+Triggered when a player is added to or removed from a job/gang.
+
+**Parameters:**
+- `source` (Source) - Player server ID
+- `groupName` (string) - Job or gang name
+- `grade` (integer | nil) - Grade if added, `nil` if removed
+
+**Triggered by:** `server/player.lua:277`, `server/player.lua:331`, `server/player.lua:500`, `server/player.lua:563`
+
+```lua
+AddEventHandler('qbx_core:server:onGroupUpdate', function(source, groupName, grade)
+    if grade then
+        print('Player added to ' .. groupName .. ' at grade ' .. grade)
+    else
+        print('Player removed from ' .. groupName)
+    end
+end)
+```
+
+### QBCore:Server:SetDuty
+
+Triggered when a player's duty status changes.
+
+**Parameters:**
+- `source` (Source) - Player server ID
+- `onDuty` (boolean) - New duty status
+
+**Triggered by:** `server/player.lua:144`
+
+```lua
+AddEventHandler('QBCore:Server:SetDuty', function(source, onDuty)
+    local status = onDuty and 'on duty' or 'off duty'
+    print(GetPlayerName(source) .. ' is now ' .. status)
+end)
+```
+
+### QBCore:ToggleDuty
+
+Player triggered event to toggle their duty status.
+
+**Handled by:** `server/events.lua:228`
+
+```lua
+TriggerServerEvent('QBCore:ToggleDuty')
+```
+
+## Money Events
+
+### QBCore:Server:OnMoneyChange
+
+Triggered when a player's money changes.
+
+**Parameters:**
+- `source` (Source) - Player server ID
+- `moneyType` (MoneyType) - Type of money (`cash`, `bank`, `crypto`)
+- `amount` (number) - Amount changed
+- `actionType` (string) - `'add'`, `'remove'`, or `'set'`
+- `reason` (string) - Reason for the change
+
+**Triggered by:** `server/player.lua:1243`, `server/player.lua:1355`, `server/player.lua:1408`
+
+```lua
+AddEventHandler('QBCore:Server:OnMoneyChange', function(source, moneyType, amount, actionType, reason)
+    print(string.format('%s %s $%d %s - %s', 
+        GetPlayerName(source), actionType, amount, moneyType, reason))
+end)
+```
+
+## Metadata Events
+
+### qbx_core:server:onSetMetaData
+
+Triggered when player metadata is updated.
+
+**Parameters:**
+- `metadata` (string) - Metadata field name
+- `oldValue` (any) - Previous value
+- `value` (any) - New value
+- `source` (Source) - Player server ID
+
+**Triggered by:** `server/player.lua:1162`
+
+```lua
+AddEventHandler('qbx_core:server:onSetMetaData', function(metadata, oldValue, value, source)
+    if metadata == 'hunger' then
+        print(GetPlayerName(source) .. ' hunger changed from ' .. oldValue .. ' to ' .. value)
+    end
+end)
+```
+
+## Permission Events
+
+### QBCore:Server:OnPermissionUpdate
+
+Triggered when a player's permissions are updated.
+
+**Parameters:**
+- `source` (Source) - Player server ID
+
+**Triggered by:** `server/functions.lua:260`, `server/functions.lua:277`, `server/functions.lua:292`
+
+**Note:** This is deprecated. Use ACE permissions instead.
+
+```lua
+AddEventHandler('QBCore:Server:OnPermissionUpdate', function(source)
+    print(GetPlayerName(source) .. ' permissions updated')
+end)
+```
+
+## Server Management Events
+
+### QBCore:Server:CloseServer
+
+Close the server and kick non-admin players.
+
+**Parameters:**
+- `reason` (string) - Reason for closing
+
+**Handled by:** `server/events.lua:201`
+
+```lua
+TriggerEvent('QBCore:Server:CloseServer', 'Server maintenance')
+```
+
+### QBCore:Server:OpenServer
+
+Open the server to allow players to join.
+
+**Handled by:** `server/events.lua:217`
+
+```lua
+TriggerEvent('QBCore:Server:OpenServer')
+```
+
+## Chat Events
+
+### chatMessage
+
+Triggered when a player sends a chat message.
+
+**Handled by:** `server/events.lua:13`
+
+```lua
+AddEventHandler('chatMessage', function(source, name, message)
+    -- Custom chat handling
+end)
+```
+
+**Built-in functionality:**
+- Cancels messages starting with `/` (commands)
+
+## Resource Events
+
+### onResourceStart
+
+Triggered when qbx_core starts.
+
+**Handled by:** `server/events.lua:175`
+
+```lua
+AddEventHandler('onResourceStart', function(resource)
+    if resource == 'qbx_core' then
+        -- Custom initialization
+    end
+end)
+```
+
+**Built-in functionality:**
+- Creates users table in database
+- Adds `userId` column to players table
+
+## State Bag Handlers
+
+### hunger/thirst/stress
+
+State bag change handlers for player needs.
+
+**Handled by:** `server/events.lua:256`, `server/events.lua:261`, `server/events.lua:266`
+
+```lua
+AddStateBagChangeHandler('hunger', nil, function(bagName, key, value)
+    local src = GetPlayerFromStateBagName(bagName)
+    -- Hunger value changed
+end)
+```
+
+**Built-in functionality:**
+- Syncs state bag values with player metadata

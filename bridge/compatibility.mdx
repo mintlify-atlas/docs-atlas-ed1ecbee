@@ -1,0 +1,443 @@
+---
+title: Compatibility Reference
+description: Detailed compatibility information for QB-Core resources running on Qbox
+---
+
+## Supported QB-Core Functions
+
+The bridge provides comprehensive compatibility with QB-Core's API. Below is a detailed breakdown of what's supported.
+
+## Server-Side Compatibility
+
+### Player Functions
+
+All standard QB-Core player functions are supported:
+
+<AccordionGroup>
+  <Accordion title="Player Object Methods">
+    ```lua
+    -- Getting players
+    QBCore.Functions.GetPlayer(source)
+    QBCore.Functions.GetPlayerByCitizenId(citizenid)
+    QBCore.Functions.GetOfflinePlayerByCitizenId(citizenid)
+    QBCore.Functions.GetPlayerByPhone(number)
+    QBCore.Functions.GetPlayers() -- returns source IDs
+    QBCore.Functions.GetQBPlayers() -- returns player objects
+    
+    -- Player management
+    QBCore.Player.Login(source, citizenid, newData)
+    QBCore.Player.Logout(source)
+    QBCore.Player.CreatePlayer(playerData, Offline)
+    QBCore.Player.Save(source)
+    QBCore.Player.DeleteCharacter(citizenid)
+    QBCore.Player.GenerateUniqueIdentifier(type)
+    ```
+    
+    <Warning>
+      **Not Supported**: `player.Functions.AddField()`, `player.Functions.AddMethod()`, `player.Functions.GetCardSlot()`
+      
+      These are incompatible with Qbox's architecture. Use native Qbox methods instead.
+    </Warning>
+  </Accordion>
+
+  <Accordion title="Core Functions">
+    ```lua
+    -- Items
+    QBCore.Functions.CreateUseableItem(item, callback)
+    QBCore.Functions.CanUseItem(item)
+    QBCore.Functions.HasItem(source, items, amount) -- deprecated
+    
+    -- Vehicles
+    QBCore.Functions.SpawnVehicle(source, model, coords, warp)
+    QBCore.Functions.GetCoords(entity)
+    QBCore.Functions.GetPlate(vehicle)
+    
+    -- Utility
+    QBCore.Functions.Kick(source, reason, setKickReason, deferrals)
+    QBCore.Functions.IsLicenseInUse(license)
+    QBCore.Functions.GetIdentifier(source, idType)
+    QBCore.Functions.Notify(source, text, type, duration, ...)
+    ```
+  </Accordion>
+
+  <Accordion title="Jobs & Gangs">
+    ```lua
+    -- Jobs
+    QBCore.Functions.AddJob(jobName, job) -- deprecated, use CreateJobs
+    QBCore.Functions.AddJobs(jobs) -- deprecated, use CreateJobs
+    QBCore.Functions.UpdateJob(jobName, job)
+    QBCore.Functions.RemoveJob(jobName)
+    QBCore.Functions.GetDutyCount(job)
+    QBCore.Functions.GetPlayersOnDuty(job)
+    
+    -- Gangs
+    QBCore.Functions.AddGang(gangName, gang) -- deprecated, use CreateGangs
+    QBCore.Functions.AddGangs(gangs) -- deprecated, use CreateGangs
+    QBCore.Functions.UpdateGang(gangName, gang)
+    QBCore.Functions.RemoveGang(gangName)
+    
+    -- Access
+    QBCore.Shared.Jobs -- auto-synced
+    QBCore.Shared.Gangs -- auto-synced
+    ```
+  </Accordion>
+
+  <Accordion title="Permissions">
+    ```lua
+    QBCore.Functions.HasPermission(source, permission)
+    QBCore.Functions.GetPermission(source)
+    QBCore.Functions.AddPermission(source, permission)
+    QBCore.Functions.RemovePermission(source, permission)
+    QBCore.Functions.IsWhitelisted(source)
+    QBCore.Functions.IsPlayerBanned(source)
+    QBCore.Functions.IsOptin(source)
+    QBCore.Functions.ToggleOptin(source)
+    ```
+  </Accordion>
+
+  <Accordion title="Buckets (Routing)">
+    ```lua
+    QBCore.Functions.SetPlayerBucket(source, bucket)
+    QBCore.Functions.SetEntityBucket(entity, bucket)
+    QBCore.Functions.GetPlayersInBucket(bucket)
+    QBCore.Functions.GetEntitiesInBucket(bucket)
+    QBCore.Functions.GetBucketObjects()
+    ```
+  </Accordion>
+</AccordionGroup>
+
+### Callbacks
+
+<Warning>
+  QB-Core callbacks are **deprecated** but still functional. Migrate to [ox_lib callbacks](https://coxdocs.dev/ox_lib/Modules/Callback/Lua/Server) for better performance.
+</Warning>
+
+```lua
+-- Server callbacks (deprecated but working)
+QBCore.Functions.CreateCallback(name, cb)
+QBCore.Functions.TriggerCallback(name, source, cb, ...)
+
+-- Client callbacks (deprecated but working)
+QBCore.Functions.TriggerClientCallback(name, source, cb, ...)
+
+-- Modern alternative (recommended)
+lib.callback.register('callbackName', function(source, ...)
+    return data
+end)
+```
+
+### Commands
+
+```lua
+-- QB-Core style (works via bridge)
+QBCore.Commands.Add(name, help, arguments, argsRequired, callback, permission)
+
+-- Translates to ox_lib internally
+lib.addCommand(name, properties, callback)
+```
+
+## Client-Side Compatibility
+
+### Player Data
+
+```lua
+-- Get player data (deprecated but works)
+local PlayerData = QBCore.Functions.GetPlayerData()
+
+-- Modern alternative
+local PlayerData = require 'qbx_core:playerdata' -- module import
+-- or
+local PlayerData = QBX.PlayerData
+```
+
+### UI Functions
+
+<AccordionGroup>
+  <Accordion title="Notifications">
+    ```lua
+    -- Works via bridge
+    QBCore.Functions.Notify(text, type, duration, subTitle, position, style, icon, iconColor)
+    
+    -- Translates to ox_lib notify
+    lib.notify({
+        title = text,
+        type = type,
+        duration = duration,
+        -- ...
+    })
+    ```
+  </Accordion>
+
+  <Accordion title="DrawText">
+    ```lua
+    -- Bridge functions (deprecated)
+    exports['qb-core']:DrawText(text, position)
+    exports['qb-core']:ChangeText(text, position)
+    exports['qb-core']:HideText()
+    
+    -- Events (deprecated)
+    TriggerEvent('qb-core:client:DrawText', text, position)
+    TriggerEvent('qb-core:client:HideText')
+    
+    -- Modern alternative
+    lib.showTextUI(text, {position = position})
+    lib.hideTextUI()
+    ```
+    
+    Position mapping:
+    - `left` → `left-center`
+    - `right` → `right-center`
+    - `top` → `top-center`
+  </Accordion>
+
+  <Accordion title="Progress Bars">
+    ```lua
+    -- QB-Core style (works)
+    QBCore.Functions.Progressbar(name, label, duration, useWhileDead, canCancel, 
+        disableControls, animation, prop, propTwo, onFinish, onCancel)
+    
+    -- Translates to ox_lib
+    lib.progressBar({
+        duration = duration,
+        label = label,
+        useWhileDead = useWhileDead,
+        canCancel = canCancel,
+        disable = disableControls,
+        anim = animation,
+        prop = prop
+    })
+    ```
+  </Accordion>
+</AccordionGroup>
+
+### Vehicle Functions
+
+```lua
+-- Spawn vehicle (deprecated but works)
+QBCore.Functions.SpawnVehicle(model, cb, coords, isNetworked, teleportInto)
+
+-- Get/Set properties (works with ox_lib translation)
+local props = QBCore.Functions.GetVehicleProperties(vehicle)
+QBCore.Functions.SetVehicleProperties(vehicle, props)
+
+-- Utility
+QBCore.Functions.GetPlate(vehicle)
+QBCore.Functions.GetVehicleLabel(vehicle)
+QBCore.Functions.DeleteVehicle(vehicle)
+QBCore.Functions.SpawnClear(coords, radius)
+```
+
+<Note>
+  Vehicle properties are automatically translated between QB-Core and ox_lib formats. Additional QB-specific properties like `tireHealth`, `tireBurstState`, etc. are preserved.
+</Note>
+
+### World Functions
+
+```lua
+-- Entity getters (deprecated)
+QBCore.Functions.GetVehicles()
+QBCore.Functions.GetObjects()
+QBCore.Functions.GetPlayers()
+QBCore.Functions.GetPeds(ignoreList)
+
+-- Closest entity (deprecated)
+QBCore.Functions.GetClosestVehicle(coords)
+QBCore.Functions.GetClosestObject(coords)
+QBCore.Functions.GetClosestPlayer(coords)
+QBCore.Functions.GetClosestPed(coords, ignoreList)
+QBCore.Functions.GetClosestBone(entity, list)
+
+-- Modern alternatives from ox_lib
+lib.getClosestVehicle(coords, maxDistance, includePlayerVehicle)
+lib.getClosestPlayer(coords, maxDistance, includePlayerPed)
+lib.getClosestPed(coords, maxDistance, ...)
+```
+
+## Shared Compatibility
+
+### Items
+
+```lua
+-- Automatically populated from ox_inventory
+QBCore.Shared.Items['phone'] = {
+    name = 'phone',
+    label = 'Phone',
+    weight = 100,
+    type = 'item',
+    unique = false,
+    useable = true,
+    -- ...
+}
+```
+
+<Info>
+  Items are automatically converted from ox_inventory's `data/items.lua` at startup. Weapons, components, and ammo are also included.
+</Info>
+
+### Utility Functions
+
+```lua
+-- String/Math utilities (deprecated but working)
+QBCore.Shared.CommaValue(value) -- use lib.math.groupdigits
+QBCore.Shared.RandomStr(length) -- use lib.string.random
+QBCore.Shared.RandomInt(length) -- use lib.string.random
+QBCore.Shared.SplitStr(str, delimiter) -- use string.strsplit
+QBCore.Shared.Trim(str) -- use qbx.string.trim
+QBCore.Shared.FirstToUpper(str) -- use qbx.string.capitalize
+QBCore.Shared.Round(value, numDecimalPlaces) -- use qbx.math.round
+
+-- Vehicle utilities (deprecated)
+QBCore.Shared.ChangeVehicleExtra(vehicle, extras) -- use qbx.setVehicleExtras
+QBCore.Shared.SetDefaultVehicleExtras(vehicle, extras) -- use qbx.setVehicleExtras
+
+-- Clothing
+QBCore.Shared.MaleNoGloves -- use qbx.armsWithoutGloves.male
+QBCore.Shared.FemaleNoGloves -- use qbx.armsWithoutGloves.female
+```
+
+## Known Incompatibilities
+
+<Warning>
+  The following QB-Core features are **NOT supported** and will error:
+</Warning>
+
+### Inventory
+
+- `qb-inventory` - Must use `ox_inventory`
+- `QBCore.Functions.UseItem()` - Use ox_inventory's `UseItem` export
+- `QBCore.Player.SaveInventory()` - ox_inventory auto-saves
+- `QBCore.Player.GetTotalWeight()` - Use ox_inventory exports
+- `QBCore.Player.GetSlotsByItem()` - Use ox_inventory exports
+
+### Items
+
+- `QBCore.Functions.AddItem()` - Incompatible, update ox_inventory config
+- `QBCore.Functions.UpdateItem()` - Incompatible, update ox_inventory config
+- `QBCore.Functions.RemoveItem()` - Incompatible, update ox_inventory config
+
+<Note>
+  To add/modify items, edit `ox_inventory/data/items.lua` directly. The bridge will auto-convert them.
+</Note>
+
+### Player Methods
+
+- `player.Functions.AddField()` - Use `player.Functions.SetMetaData()` instead
+- `player.Functions.AddMethod()` - Not supported
+- `player.Functions.GetCardSlot()` - Use ox_inventory directly
+
+## Migration Recommendations
+
+While the bridge ensures your QB resources work, we recommend gradually migrating to native Qbox APIs:
+
+<Steps>
+  <Step title="Replace Callbacks">
+    Migrate from QB-Core callbacks to ox_lib callbacks for better performance and maintainability.
+    
+    ```lua
+    -- Old
+    QBCore.Functions.CreateCallback('getName', function(source, cb)
+        cb('John')
+    end)
+    
+    -- New
+    lib.callback.register('getName', function(source)
+        return 'John'
+    end)
+    ```
+  </Step>
+
+  <Step title="Use ox_lib Utilities">
+    Replace deprecated utility functions with ox_lib equivalents.
+    
+    ```lua
+    -- Old
+    local model = QBCore.Functions.LoadModel(modelHash)
+    
+    -- New
+    local model = lib.requestModel(modelHash)
+    ```
+  </Step>
+
+  <Step title="Direct ox_inventory Integration">
+    Use ox_inventory exports directly instead of QB-Core wrappers.
+    
+    ```lua
+    -- Old
+    local hasItem = QBCore.Functions.HasItem(source, 'phone')
+    
+    -- New
+    local count = exports.ox_inventory:Search(source, 'count', 'phone')
+    local hasItem = count > 0
+    ```
+  </Step>
+
+  <Step title="Modern Player Data Access">
+    Import the playerdata module instead of using GetPlayerData().
+    
+    ```lua
+    -- Old
+    local PlayerData = QBCore.Functions.GetPlayerData()
+    
+    -- New
+    local PlayerData = require 'qbx_core:playerdata'
+    ```
+  </Step>
+</Steps>
+
+## Testing Your Resource
+
+To verify compatibility:
+
+1. **Enable bridge**: Ensure `qbx:enablebridge` convar is `true`
+2. **Check console**: Look for deprecation warnings
+3. **Test functionality**: Verify all features work as expected
+4. **Review errors**: Any bridge-related errors will reference the incompatible function
+
+### Configuration Options
+
+```bash
+# server.cfg
+
+# Enable/disable bridge (default: true)
+setvars qbx:enablebridge "true"
+
+# Allow method overrides in player object (default: true)
+setvars qbx:allowmethodoverrides "true"
+
+# Disable override warnings (default: false)
+setvars qbx:disableoverridewarning "false"
+
+# Discord link for kick messages
+setvars qbx:discordlink "discord.gg/qbox"
+```
+
+## Getting Help
+
+If you encounter compatibility issues:
+
+<CardGroup cols={2}>
+  <Card title="Qbox Discord" icon="discord" href="https://discord.gg/qbox">
+    Get support from the community
+  </Card>
+  <Card title="GitHub Issues" icon="github" href="https://github.com/Qbox-project/qbx_core">
+    Report bugs or compatibility problems
+  </Card>
+</CardGroup>
+
+## Summary
+
+<Check>
+  **Fully Compatible**: Most QB-Core resources run without modification
+</Check>
+
+<Check>
+  **Automatic Translation**: Bridge handles API differences transparently
+</Check>
+
+<Warning>
+  **Inventory Exception**: Must use ox_inventory, not qb-inventory
+</Warning>
+
+<Info>
+  **Gradual Migration**: Bridge allows you to migrate at your own pace while maintaining compatibility
+</Info>

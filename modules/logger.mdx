@@ -1,0 +1,336 @@
+---
+title: Logger Module
+description: Logging system with Discord webhooks and ox_lib integration
+icon: file-lines
+---
+
+The logger module provides a unified logging system that supports both Discord webhooks and ox_lib logging backends (Datadog, Grafana Loki, Fivemanage).
+
+<Warning>
+The logger module is server-side only. Attempting to use it on the client will result in an error.
+</Warning>
+
+## Overview
+
+The logger provides:
+
+- Discord webhook integration with rich embeds
+- ox_lib logger support for professional logging services
+- Automatic rate limit handling for Discord webhooks
+- Color-coded messages
+- Flexible tagging system for Discord notifications
+
+## Basic Usage
+
+```lua
+local logger = require 'modules/logger'
+
+logger.log({
+    source = 'PlayerManager',
+    event = 'PlayerConnected',
+    message = 'Player John Doe connected to the server',
+    webhook = 'https://discord.com/api/webhooks/your-webhook-url',
+    color = 'green'
+})
+```
+
+## API Reference
+
+### log
+
+Creates a log entry with optional Discord webhook and ox_lib logging.
+
+```lua
+logger.log(log)
+```
+
+#### Parameters
+
+<ParamField path="log" type="Log" required>
+  The log configuration object
+  
+  <Expandable title="properties">
+    <ParamField path="source" type="string" required>
+      Source of the log. Usually a player ID or resource name.
+    </ParamField>
+    
+    <ParamField path="event" type="string" required>
+      The action or event being logged. Usually a verb describing what happened (e.g., "SpawnVehicle", "TransferMoney").
+    </ParamField>
+    
+    <ParamField path="message" type="string" required>
+      The detailed message describing what happened.
+    </ParamField>
+    
+    <ParamField path="webhook" type="string">
+      Discord webhook URL. If provided, the log will be sent to Discord.
+    </ParamField>
+    
+    <ParamField path="color" type="string" default="default">
+      Color for Discord embed. Available colors: `default`, `blue`, `red`, `green`, `white`, `black`, `orange`, `yellow`, `pink`, `lightgreen`.
+    </ParamField>
+    
+    <ParamField path="tags" type="string[]">
+      Discord tags to mention. Example: `{'<@&123456789>', '@everyone'}`
+    </ParamField>
+    
+    <ParamField path="oxLibTags" type="string">
+      Tags for ox_lib logger (used by Datadog, Grafana Loki, etc.)
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+## Discord Integration
+
+### Discord Embed Colors
+
+The logger supports predefined colors for Discord embeds:
+
+```lua
+-- From logger.lua:11-22
+local Colors = {
+    default = 14423100,  -- Gray
+    blue = 255,
+    red = 16711680,
+    green = 65280,
+    white = 16777215,
+    black = 0,
+    orange = 16744192,
+    yellow = 16776960,
+    pink = 16761035,
+    lightgreen = 65309,
+}
+```
+
+### Discord Webhook Example
+
+```lua
+local logger = require 'modules/logger'
+
+-- Log a player action to Discord
+logger.log({
+    source = GetPlayerName(source),
+    event = 'VehicleSpawned',
+    message = ('Player spawned a %s at coordinates %s'):format(vehicleModel, coords),
+    webhook = 'https://discord.com/api/webhooks/your-webhook-url',
+    color = 'blue',
+    tags = {'<@&987654321>'}  -- Mention a role
+})
+```
+
+### Discord Embed Format
+
+Discord logs are formatted as rich embeds with:
+
+- **Title**: The event name
+- **Color**: The specified color (or default gray)
+- **Description**: The log message
+- **Author**: The source (player name or resource)
+- **Footer**: Timestamp in `HH:MM:SS MM-DD-YYYY` format
+- **Avatar**: QBX duck logo
+- **Username**: "QBX Logs"
+
+```lua
+-- From logger.lua:108-120
+local embedData = {
+    {
+        title = log.event,
+        color = Colors[log.color] or Colors.default,
+        footer = {
+            text = os.date('%H:%M:%S %m-%d-%Y'),
+        },
+        description = log.message,
+        author = {
+            name = log.source,
+        },
+    }
+}
+```
+
+## Rate Limiting
+
+The logger automatically handles Discord's rate limits:
+
+### Queue System
+
+All Discord logs are queued and processed sequentially to avoid rate limit errors:
+
+```lua
+-- Logs are added to a queue
+logQueue[#logQueue + 1] = {
+    webhook = log.webhook,
+    tags = log.tags,
+    embed = embedData
+}
+
+-- Queue is processed in a separate thread
+if not isProcessingQueue then
+    isProcessingQueue = true
+    CreateThread(processLogQueue)
+end
+```
+
+### Automatic Delays
+
+The system implements smart delays:
+
+- After every 5 logs, waits 60 seconds to prevent rate limiting
+- Respects Discord's rate limit headers
+- Automatically calculates delay based on `X-RateLimit-Reset` header
+
+```lua
+-- From logger.lua:91-96
+if logCount % 5 == 0 then
+    Wait(60000)  -- Wait 1 minute after every 5 logs
+else
+    applyRequestDelay()  -- Apply calculated delay
+end
+```
+
+<Note>
+The rate limiting system ensures your Discord webhooks won't get banned for exceeding rate limits, even during high-activity periods.
+</Note>
+
+## ox_lib Integration
+
+Every log is automatically sent to ox_lib's logger, which supports multiple backends:
+
+```lua
+-- From logger.lua:150
+lib.logger(log.source, log.event, log.message, log.oxLibTags)
+```
+
+### Supported Backends
+
+- **Datadog**: Professional log aggregation and monitoring
+- **Grafana Loki**: Open-source log aggregation
+- **Fivemanage**: FiveM-specific logging service
+
+Configure these in your ox_lib settings to enable professional logging.
+
+## Examples
+
+### Player Action Logging
+
+```lua
+local logger = require 'modules/logger'
+
+RegisterNetEvent('qbx_core:server:playerDied', function()
+    local src = source
+    local player = exports.qbx_core:GetPlayer(src)
+    
+    logger.log({
+        source = GetPlayerName(src),
+        event = 'PlayerDeath',
+        message = ('Player %s died at %s'):format(
+            player.PlayerData.charinfo.firstname .. ' ' .. player.PlayerData.charinfo.lastname,
+            json.encode(GetEntityCoords(GetPlayerPed(src)))
+        ),
+        webhook = GetConvar('discord_death_webhook', ''),
+        color = 'red'
+    })
+end)
+```
+
+### Admin Action Logging
+
+```lua
+local logger = require 'modules/logger'
+
+RegisterCommand('giveitem', function(source, args)
+    local src = source
+    local targetId = tonumber(args[1])
+    local item = args[2]
+    local amount = tonumber(args[3])
+    
+    -- Give the item...
+    
+    logger.log({
+        source = GetPlayerName(src),
+        event = 'AdminGiveItem',
+        message = ('Admin %s gave %dx %s to player %s'):format(
+            GetPlayerName(src),
+            amount,
+            item,
+            GetPlayerName(targetId)
+        ),
+        webhook = GetConvar('discord_admin_webhook', ''),
+        color = 'orange',
+        tags = {'<@&' .. GetConvar('discord_admin_role', '') .. '>'},  -- Mention admin role
+        oxLibTags = 'admin,items'
+    })
+end)
+```
+
+### Economy Transaction Logging
+
+```lua
+local logger = require 'modules/logger'
+
+function TransferMoney(fromId, toId, amount)
+    -- Transfer logic...
+    
+    logger.log({
+        source = 'EconomySystem',
+        event = 'MoneyTransfer',
+        message = ('$%d transferred from %s to %s'):format(
+            amount,
+            GetPlayerName(fromId),
+            GetPlayerName(toId)
+        ),
+        webhook = GetConvar('discord_economy_webhook', ''),
+        color = 'green',
+        oxLibTags = 'economy,transaction'
+    })
+end
+```
+
+### Vehicle Spawn Logging
+
+```lua
+local logger = require 'modules/logger'
+
+RegisterNetEvent('qbx_core:server:spawnVehicle', function(model)
+    local src = source
+    local coords = GetEntityCoords(GetPlayerPed(src))
+    
+    logger.log({
+        source = GetPlayerName(src),
+        event = 'VehicleSpawned',
+        message = ('Vehicle %s spawned at %s'):format(
+            model,
+            json.encode(coords)
+        ),
+        webhook = GetConvar('discord_vehicle_webhook', ''),
+        color = 'blue'
+    })
+end)
+```
+
+## Best Practices
+
+1. **Use descriptive event names** - Choose clear, action-oriented names like "PlayerConnected", "VehicleSpawned", "MoneyTransferred"
+
+2. **Include context in messages** - Add relevant details like player names, amounts, locations, etc.
+
+3. **Use appropriate colors** - Match colors to severity (red for errors, green for success, orange for warnings)
+
+4. **Configure webhooks via convars** - Store webhook URLs in convars for easy configuration:
+   ```lua
+   webhook = GetConvar('discord_admin_webhook', '')
+   ```
+
+5. **Use tags sparingly** - Only mention roles/users for critical events to avoid notification spam
+
+6. **Add ox_lib tags** - Include relevant tags for professional logging services:
+   ```lua
+   oxLibTags = 'economy,transaction,banking'
+   ```
+
+7. **Check webhook exists** - Verify webhook URL before logging to avoid errors:
+   ```lua
+   local webhook = GetConvar('discord_admin_webhook', '')
+   if webhook ~= '' then
+       logger.log({ ..., webhook = webhook })
+   end
+   ```

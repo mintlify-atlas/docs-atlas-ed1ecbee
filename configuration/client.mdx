@@ -1,0 +1,206 @@
+---
+title: Client Configuration
+description: Configure client-side settings for Qbox Core including character management, Discord rich presence, and UI settings
+---
+
+The client configuration file (`config/client.lua`) contains all client-side settings for Qbox Core. This includes character creation, Discord integration, and UI customization.
+
+## Status System
+
+<ParamField path="statusIntervalSeconds" type="number" default="5">
+  How often (in seconds) to check hunger/thirst status and remove health if either reaches 0.
+</ParamField>
+
+<ParamField path="loadingModelsTimeout" type="number" default="30000">
+  Waiting time in milliseconds for ox_lib to load models before throwing an error. Increase this value for low-spec PCs that need more time to load assets.
+</ParamField>
+
+## Pause Menu
+
+<ParamField path="pauseMapText" type="string" default="Powered by Qbox">
+  Text shown above the map when ESC is pressed. If left empty, 'FiveM' will appear instead.
+</ParamField>
+
+## Character Management
+
+Configure character creation and selection behavior.
+
+<ParamField path="characters.useExternalCharacters" type="boolean" default="false">
+  Whether you have an external character management resource.
+  
+  If `true`, disables the character management inside qbx_core and allows you to use a custom character selection screen.
+</ParamField>
+
+<ParamField path="characters.enableDeleteButton" type="boolean" default="true">
+  Whether players should be able to delete their own characters.
+  
+  Set to `false` to prevent players from deleting characters (admin-only deletion).
+</ParamField>
+
+<ParamField path="characters.startingApartment" type="boolean" default="true">
+  If `true`, players will choose a starting apartment when creating a new character.
+  
+  <Note>
+    Requires `qbx_spawn` resource if set to `true`.
+  </Note>
+  
+  If `false`, skips apartment selection during character creation.
+</ParamField>
+
+### Date of Birth Settings
+
+<ParamField path="characters.dateFormat" type="string" default="YYYY-MM-DD">
+  Date format for character date of birth input.
+</ParamField>
+
+<ParamField path="characters.dateMin" type="string" default="1900-01-01">
+  Minimum allowed date of birth. Must be in the same format as `dateFormat`.
+</ParamField>
+
+<ParamField path="characters.dateMax" type="string" default="2006-12-31">
+  Maximum allowed date of birth. Must be in the same format as `dateFormat`.
+  
+  Default ensures characters are at least 18 years old (as of 2024).
+</ParamField>
+
+### Nationality
+
+<ParamField path="characters.limitNationalities" type="boolean" default="true">
+  If `true`, limits nationality selection to predefined options from `data/nationalities.lua`.
+  
+  If `false`, players can enter any text in the nationality field.
+</ParamField>
+
+### Profanity Filter
+
+<ParamField path="characters.profanityWords" type="table<string, boolean>">
+  Dictionary of profane words blocked during character creation.
+  
+  **Example:**
+  ```lua
+  profanityWords = {
+      ['bad word'] = true,
+      ['another bad word'] = true,
+  }
+  ```
+</ParamField>
+
+### Spawn Locations
+
+<ParamField path="characters.locations" type="table[]">
+  Spawn locations for the character selection screen (multichar). One location is chosen randomly each time.
+  
+  Each location contains:
+  - `pedCoords` - Where the player character stands (vec4: x, y, z, heading)
+  - `camCoords` - Where the camera is positioned (vec4: x, y, z, heading)
+  
+  **Example:**
+  ```lua
+  locations = {
+      {
+          pedCoords = vec4(969.25, 72.61, 116.18, 276.55),
+          camCoords = vec4(972.2, 72.9, 116.68, 97.27),
+      },
+      {
+          pedCoords = vec4(1104.49, 195.9, -49.44, 44.22),
+          camCoords = vec4(1102.29, 198.14, -48.86, 225.07),
+      },
+      -- More locations...
+  }
+  ```
+  
+  <Accordion title="View Default Locations">
+    The default configuration includes 7 scenic locations:
+    1. Luxury mansion exterior
+    2. Underground parking garage
+    3. Zancudo bunker interior
+    4. Underground facility
+    5. Casino penthouse area
+    6. Military base interior
+    7. Office building exterior
+  </Accordion>
+</ParamField>
+
+## Discord Rich Presence
+
+Configure Discord rich presence integration to show server information in players' Discord status.
+
+<ParamField path="discord.enabled" type="boolean" default="true">
+  Enable or disable the built-in Discord rich presence.
+</ParamField>
+
+<ParamField path="discord.appId" type="string" default="1024981890798731345">
+  Discord Application ID for rich presence.
+  
+  Replace this with your own Application ID from the [Discord Developer Portal](https://discord.com/developers/applications).
+</ParamField>
+
+### Large Icon
+
+<ParamField path="discord.largeIcon.icon" type="string" default="duck">
+  Image name for the large icon in Discord rich presence.
+  
+  <Note>
+    To set up custom images, visit [this guide](https://forum.cfx.re/t/how-to-updated-discord-rich-presence-custom-image/157686).
+  </Note>
+</ParamField>
+
+<ParamField path="discord.largeIcon.text" type="string" default="Qbox Ducky">
+  Hover text for the large icon.
+</ParamField>
+
+### Small Icon
+
+<ParamField path="discord.smallIcon.icon" type="string" default="logo_name">
+  Image name for the small icon in Discord rich presence.
+</ParamField>
+
+<ParamField path="discord.smallIcon.text" type="string" default="This is a small icon with text">
+  Hover text for the small icon.
+</ParamField>
+
+### Buttons
+
+Discord rich presence can display up to 2 clickable buttons.
+
+<ParamField path="discord.firstButton.text" type="string" default="Qbox Discord">
+  Text for the first button.
+</ParamField>
+
+<ParamField path="discord.firstButton.link" type="string" default="https://discord.gg/Z6Whda5hHA">
+  URL for the first button.
+</ParamField>
+
+<ParamField path="discord.secondButton.text" type="string" default="Main Website">
+  Text for the second button.
+</ParamField>
+
+<ParamField path="discord.secondButton.link" type="string" default="https://www.qbox.re/">
+  URL for the second button.
+</ParamField>
+
+## Integration Functions
+
+### Vehicle Keys (QB Bridge)
+
+<ParamField path="hasKeys" type="function">
+  Function used by the QB bridge to check if a player has vehicle keys.
+  
+  **Parameters:**
+  - `plate` (string) - Vehicle plate
+  - `vehicle` (number) - Vehicle entity
+  
+  **Returns:** `boolean` - Whether the player has keys
+  
+  **Default Implementation:**
+  ```lua
+  hasKeys = function(plate, vehicle)
+      return GetResourceState('qbx_vehiclekeys') ~= 'started' 
+          or exports.qbx_vehiclekeys:HasKeys(vehicle)
+  end
+  ```
+  
+  <Note>
+    This function is only used by the QB bridge compatibility layer.
+  </Note>
+</ParamField>

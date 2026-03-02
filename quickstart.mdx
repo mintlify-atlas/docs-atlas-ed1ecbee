@@ -1,80 +1,672 @@
 ---
-title: "Quickstart"
-description: "Start building awesome documentation in minutes"
+title: Quickstart
+description: Get up and running with Qbox Core - from installation to your first character
 ---
 
-## Get started in three steps
+# Quickstart guide
 
-Get your documentation site running locally and make your first customization.
+This guide will take you from a fresh Qbox Core installation to creating your first character and building a basic resource. You'll learn the fundamentals of working with the framework.
 
-### Step 1: Set up your local environment
+<Note>
+  This guide assumes you've already completed the [installation](/installation) steps. If not, start there first.
+</Note>
 
-<AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
+## Configure your server
+
+Before players can join, you need to configure some basic settings.
+
+<Steps>
+  <Step title="Set your server name">
+    Open `config/shared.lua` and set your server name:
+    ```lua config/shared.lua
+    return {
+        serverName = 'My Roleplay Server',
+        defaultSpawn = vec4(-540.58, -212.02, 37.65, 208.88),
+        notifyPosition = 'top-right',
+        -- ...
+    }
+    ```
+  </Step>
+  
+  <Step title="Configure starter items">
+    Players spawn with these items by default:
+    ```lua config/shared.lua
+    starterItems = {
+        { name = 'phone', amount = 1 },
+        { name = 'id_card', amount = 1, metadata = function(source)
+                assert(GetResourceState('qbx_idcard') == 'started', 'qbx_idcard resource not found')
+                return exports.qbx_idcard:GetMetaLicense(source, {'id_card'})
+            end
+        },
+        { name = 'driver_license', amount = 1, metadata = function(source)
+                assert(GetResourceState('qbx_idcard') == 'started', 'qbx_idcard resource not found')
+                return exports.qbx_idcard:GetMetaLicense(source, {'driver_license'})
+            end
+        },
+    }
+    ```
+    <Note>
+      The `id_card` and `driver_license` items require the `qbx_idcard` resource. Remove them if you don't have it installed.
+    </Note>
+  </Step>
+  
+  <Step title="Configure starting money">
+    Set how much money players start with:
+    ```lua config/server.lua
+    money = {
+        moneyTypes = { 
+            cash = 500,    -- Starting cash
+            bank = 5000,   -- Starting bank balance
+            crypto = 0     -- Starting crypto
+        },
+        dontAllowMinus = { 'cash', 'crypto' },
+        paycheckTimeout = 10,
+        paycheckSociety = false
+    }
+    ```
+  </Step>
+  
+  <Step title="Configure character limits">
+    Set how many characters players can create:
+    ```lua config/server.lua
+    characters = {
+        -- Give specific licenses more character slots
+        playersNumberOfCharacters = {
+            ['license2:xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'] = 5,
+        },
+        -- Default for all other players
+        defaultNumberOfCharacters = 3,
+    }
+    ```
+  </Step>
+</Steps>
+
+## Create your first character
+
+<Steps>
+  <Step title="Join your server">
+    Connect to your server through FiveM. You'll see the character selection screen.
+  </Step>
+  
+  <Step title="Click create new character">
+    Fill out the character creation form:
+    - **First Name**: Your character's first name
+    - **Last Name**: Your character's last name
+    - **Date of Birth**: Must be between 1900-01-01 and 2006-12-31 (configurable)
+    - **Gender**: Male or Female
+    - **Nationality**: Select from the list (or enter custom if `limitNationalities = false`)
     
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
-  </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
+    <Note>
+      The date format is configured in `config/client.lua`:
+      ```lua
+      characters = {
+          dateFormat = 'YYYY-MM-DD',
+          dateMin = '1900-01-01',
+          dateMax = '2006-12-31',
+      }
+      ```
+    </Note>
+  </Step>
+  
+  <Step title="Customize your appearance">
+    If you have a character appearance resource installed (like `qbx_appearance`), you'll be able to customize your character's look.
+  </Step>
+  
+  <Step title="Spawn into the world">
+    Your character will spawn at the default spawn location or an apartment selection screen (if `startingApartment = true` and you have `qbx_spawn` installed).
     
-    <Tip>Your preview updates automatically as you edit files.</Tip>
-  </Accordion>
-</AccordionGroup>
+    Default spawn location:
+    ```lua config/shared.lua
+    defaultSpawn = vec4(-540.58, -212.02, 37.65, 208.88)
+    ```
+  </Step>
+</Steps>
 
-### Step 2: Deploy your changes
+## Understanding your character
 
-<AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
+When you create a character, the framework generates unique identifiers and sets up your player data.
+
+### Character identifiers
+
+Each character receives unique IDs:
+
+```lua server/player.lua
+identifierTypes = {
+    citizenid = {
+        valueFunction = function()
+            return lib.string.random('A.......')  -- e.g., "A1234567"
+        end,
+    },
+    AccountNumber = {
+        valueFunction = function()
+            return 'US0' .. math.random(1, 9) .. 'QBX' .. math.random(1111, 9999) .. math.random(1111, 9999) .. math.random(11, 99)
+        end,
+    },
+    PhoneNumber = {
+        valueFunction = function()
+            return math.random(100,999) .. math.random(1000000,9999999)
+        end,
+    },
+}
+```
+
+### Character metadata
+
+Your character has metadata tracking various stats:
+
+- **health**: Current health (default: 200)
+- **hunger**: Hunger level 0-100 (default: 100)
+- **thirst**: Thirst level 0-100 (default: 100)
+- **stress**: Stress level 0-100 (default: 0)
+- **armor**: Current armor (default: 0)
+- **bloodtype**: Blood type (randomly assigned from A+, A-, B+, B-, AB+, AB-, O+, O-)
+
+### Starting job
+
+New characters start with the unemployed job:
+
+```lua shared/jobs.lua
+['unemployed'] = {
+    label = 'Civilian',
+    defaultDuty = true,
+    offDutyPay = false,
+    grades = {
+        [0] = {
+            name = 'Freelancer',
+            payment = 10
+        },
+    },
+},
+```
+
+## Test basic functionality
+
+Now that you have a character, let's test some core features.
+
+### Check your player data
+
+Open the client console (F8) and run:
+
+```lua
+-- Get your player data
+local playerData = exports.qbx_core:GetPlayerData()
+print(json.encode(playerData, {indent = true}))
+```
+
+You'll see your character info, job, money, and metadata.
+
+### Test money functions
+
+Use these commands in the server console:
+
+```lua
+-- Add money to player (source = player ID)
+exports.qbx_core:AddMoney(1, 'cash', 500)
+
+-- Remove money
+exports.qbx_core:RemoveMoney(1, 'bank', 100)
+
+-- Set money to specific amount
+exports.qbx_core:SetMoney(1, 'cash', 1000)
+
+-- Get money amount
+local cash = exports.qbx_core:GetMoney(1, 'cash')
+print('Player has $' .. cash)
+```
+
+### Test job functions
+
+Set a player's job from the server console:
+
+```lua
+-- Give player police job at grade 0
+exports.qbx_core:SetJob(1, 'police', 0)
+
+-- Set job duty status
+exports.qbx_core:SetJobDuty(1, true)
+
+-- Add player to additional job
+exports.qbx_core:AddPlayerToJob('A1234567', 'mechanic', 2)
+```
+
+Available jobs are defined in `shared/jobs.lua`:
+
+```lua shared/jobs.lua
+['police'] = {
+    label = 'LSPD',
+    type = 'leo',
+    defaultDuty = true,
+    offDutyPay = false,
+    grades = {
+        [0] = { name = 'Recruit', payment = 50 },
+        [1] = { name = 'Officer', payment = 75 },
+        [2] = { name = 'Sergeant', payment = 100 },
+        [3] = { name = 'Lieutenant', payment = 125 },
+        [4] = { name = 'Chief', isboss = true, bankAuth = true, payment = 150 },
+    },
+}
+```
+
+### Test metadata functions
+
+Update player metadata from the server console:
+
+```lua
+-- Set hunger level
+exports.qbx_core:SetMetadata(1, 'hunger', 50)
+
+-- Set nested metadata
+exports.qbx_core:SetMetadata(1, 'licences.weapon', true)
+
+-- Get metadata
+local hunger = exports.qbx_core:GetMetadata(1, 'hunger')
+print('Player hunger: ' .. hunger)
+```
+
+## Create your first resource
+
+Let's build a simple job resource that pays players for completing tasks.
+
+<Steps>
+  <Step title="Create resource structure">
+    Create a new folder in your resources directory:
+    ```
+    resources/
+    └── my_job/
+        ├── fxmanifest.lua
+        ├── config.lua
+        ├── server/
+        │   └── main.lua
+        └── client/
+            └── main.lua
+    ```
+  </Step>
+  
+  <Step title="Create the manifest">
+    ```lua my_job/fxmanifest.lua
+    fx_version 'cerulean'
+    game 'gta5'
     
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
-</Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
+    name 'my_job'
+    author 'Your Name'
+    version '1.0.0'
+    
+    shared_scripts {
+        '@ox_lib/init.lua',
+        'config.lua'
+    }
+    
+    client_scripts {
+        'client/*.lua'
+    }
+    
+    server_scripts {
+        'server/*.lua'
+    }
+    
+    lua54 'yes'
+    ```
+  </Step>
+  
+  <Step title="Create the config">
+    ```lua my_job/config.lua
+    Config = {}
+    
+    Config.JobName = 'garbage'  -- Must match a job in shared/jobs.lua
+    Config.PayPerTask = 150
+    
+    Config.TaskLocations = {
+        vector3(287.84, -874.93, 29.36),
+        vector3(213.82, -862.37, 30.49),
+        vector3(127.52, -1030.54, 29.36),
+    }
+    ```
+  </Step>
+  
+  <Step title="Create the client script">
+    ```lua my_job/client/main.lua
+    local currentTask = 0
+    
+    -- Check if player has the required job
+    local function hasRequiredJob()
+        return exports.qbx_core:HasPrimaryGroup(Config.JobName)
+    end
+    
+    -- Create task markers
+    CreateThread(function()
+        for i, coords in ipairs(Config.TaskLocations) do
+            local blip = AddBlipForCoord(coords.x, coords.y, coords.z)
+            SetBlipSprite(blip, 318)
+            SetBlipScale(blip, 0.8)
+            SetBlipColour(blip, 2)
+            SetBlipAsShortRange(blip, true)
+            BeginTextCommandSetBlipName('STRING')
+            AddTextComponentString('Task Location')
+            EndTextCommandSetBlipName(blip)
+        end
+    end)
+    
+    -- Task interaction points
+    CreateThread(function()
+        local ox_target = GetResourceState('ox_target') == 'started'
+        
+        for i, coords in ipairs(Config.TaskLocations) do
+            if ox_target then
+                exports.ox_target:addSphereZone({
+                    coords = coords,
+                    radius = 2.0,
+                    options = {
+                        {
+                            name = 'complete_task',
+                            icon = 'fas fa-hand',
+                            label = 'Complete Task',
+                            canInteract = function()
+                                return hasRequiredJob()
+                            end,
+                            onSelect = function()
+                                TriggerServerEvent('my_job:completeTask', i)
+                            end
+                        }
+                    }
+                })
+            else
+                -- Fallback to text UI
+                lib.zones.sphere({
+                    coords = coords,
+                    radius = 2.0,
+                    onEnter = function()
+                        if hasRequiredJob() then
+                            lib.showTextUI('[E] Complete Task')
+                        end
+                    end,
+                    onExit = function()
+                        lib.hideTextUI()
+                    end,
+                    inside = function()
+                        if hasRequiredJob() and IsControlJustPressed(0, 38) then
+                            TriggerServerEvent('my_job:completeTask', i)
+                        end
+                    end
+                })
+            end
+        end
+    end)
+    ```
+  </Step>
+  
+  <Step title="Create the server script">
+    ```lua my_job/server/main.lua
+    -- Track completed tasks per player
+    local completedTasks = {}
+    
+    RegisterNetEvent('my_job:completeTask', function(taskId)
+        local src = source
+        local player = exports.qbx_core:GetPlayer(src)
+        
+        if not player then return end
+        
+        -- Check if player has the required job
+        if player.PlayerData.job.name ~= Config.JobName then
+            exports.qbx_core:Notify(src, 'You need to be a ' .. Config.JobName .. ' to do this!', 'error')
+            return
+        end
+        
+        -- Check if player is on duty
+        if not player.PlayerData.job.onduty then
+            exports.qbx_core:Notify(src, 'You must be on duty!', 'error')
+            return
+        end
+        
+        -- Initialize player's task tracker
+        if not completedTasks[src] then
+            completedTasks[src] = {}
+        end
+        
+        -- Check if task was already completed
+        if completedTasks[src][taskId] then
+            exports.qbx_core:Notify(src, 'You already completed this task!', 'error')
+            return
+        end
+        
+        -- Mark task as completed
+        completedTasks[src][taskId] = true
+        
+        -- Give reward
+        local success = exports.qbx_core:AddMoney(src, 'cash', Config.PayPerTask, 'job-task-completed')
+        
+        if success then
+            exports.qbx_core:Notify(src, 'Task completed! You earned $' .. Config.PayPerTask, 'success')
+        end
+    end)
+    
+    -- Clear completed tasks when player logs out
+    AddEventHandler('qbx_core:server:playerLoggedOut', function(source)
+        completedTasks[source] = nil
+    end)
+    ```
+  </Step>
+  
+  <Step title="Start the resource">
+    Add to your `server.cfg`:
+    ```bash server.cfg
+    ensure my_job
+    ```
+    
+    Then restart your server or use:
+    ```
+    refresh
+    ensure my_job
+    ```
+  </Step>
+</Steps>
 
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
+## Test your resource
 
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
-  </Accordion>
-</AccordionGroup>
+<Steps>
+  <Step title="Set your job">
+    From the server console:
+    ```lua
+    exports.qbx_core:SetJob(1, 'garbage', 0)
+    exports.qbx_core:SetJobDuty(1, true)
+    ```
+  </Step>
+  
+  <Step title="Go to a task location">
+    Check your map for the green blips. Drive to one of the task locations.
+  </Step>
+  
+  <Step title="Complete the task">
+    When you're near the location, press E (or use the interaction) to complete the task.
+    
+    You should receive:
+    - A notification showing the payment
+    - $150 in cash added to your account
+  </Step>
+</Steps>
 
-### Step 3: Go live
+## Working with player functions
 
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
-</Accordion>
+Here are common patterns you'll use when building resources:
+
+### Get player data
+
+```lua
+-- Client-side: Get your own data
+local playerData = exports.qbx_core:GetPlayerData()
+local job = playerData.job
+local money = playerData.money
+
+-- Server-side: Get player object
+local player = exports.qbx_core:GetPlayer(source)
+local citizenid = player.PlayerData.citizenid
+
+-- Get offline player by citizenid
+local player = exports.qbx_core:GetOfflinePlayer('A1234567')
+```
+
+### Check player permissions
+
+```lua
+-- Check if player has a specific job (primary only)
+if exports.qbx_core:HasPrimaryGroup('police') then
+    -- Player is police
+end
+
+-- Check if player has any of multiple jobs
+if exports.qbx_core:HasGroup({'police', 'ambulance'}) then
+    -- Player is police OR ambulance
+end
+
+-- Check if player has job at specific grade
+if exports.qbx_core:HasGroup({police = 3}) then
+    -- Player is police at grade 3 or higher
+end
+
+-- Get all player's jobs
+local groups = exports.qbx_core:GetGroups()
+-- Returns: { police = 2, mechanic = 1 }
+```
+
+### Notify players
+
+```lua
+-- Server-side
+exports.qbx_core:Notify(source, 'This is a notification', 'success')
+exports.qbx_core:Notify(source, 'Something went wrong', 'error')
+exports.qbx_core:Notify(source, 'Just some info', 'inform')
+
+-- Client-side
+exports.qbx_core:Notify('This is a notification', 'success')
+
+-- With custom options
+exports.qbx_core:Notify(
+    'Title text',           -- text
+    'success',              -- type
+    5000,                   -- duration (ms)
+    'Subtitle text',        -- subtitle
+    'top-right',            -- position
+    nil,                    -- custom style
+    'circle-check',         -- icon
+    '#00ff00'               -- icon color
+)
+```
+
+### Using callbacks
+
+```lua
+-- Client to server callback
+local result = lib.callback.await('my_resource:serverCallback', false, arg1, arg2)
+
+-- Register server callback
+lib.callback.register('my_resource:serverCallback', function(source, arg1, arg2)
+    local player = exports.qbx_core:GetPlayer(source)
+    
+    if not player then return false end
+    
+    -- Do something
+    return true
+end)
+```
+
+## Common configuration options
+
+### Hunger and thirst rates
+
+```lua config/server.lua
+player = {
+    hungerRate = 4.2,  -- Rate at which hunger decreases
+    thirstRate = 3.8,  -- Rate at which thirst decreases
+}
+```
+
+### Paycheck settings
+
+```lua config/server.lua
+money = {
+    paycheckTimeout = 10,        -- Minutes between paychecks
+    paycheckSociety = false,     -- If true, money comes from society account
+}
+```
+
+### Character creation limits
+
+```lua config/client.lua
+characters = {
+    enableDeleteButton = true,   -- Allow players to delete characters
+    startingApartment = true,    -- Show apartment selection (requires qbx_spawn)
+    limitNationalities = true,   -- Restrict to predefined nationalities
+}
+```
 
 ## Next steps
 
-Now that you have your docs running, explore these key features:
-
 <CardGroup cols={2}>
-
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
-</Card>
-
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
-</Card>
-
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
-</Card>
-
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
-</Card>
-
+  <Card title="API Reference" icon="code" href="/api/server/functions">
+    Explore all available functions and exports
+  </Card>
+  <Card title="Player API" icon="user" href="/api/server/player">
+    Learn about player functions and methods
+  </Card>
+  <Card title="Jobs & Gangs" icon="briefcase" href="/concepts/jobs-gangs">
+    Understand the job and gang system
+  </Card>
+  <Card title="Configuration" icon="gear" href="/configuration/server">
+    Deep dive into all configuration options
+  </Card>
 </CardGroup>
 
-<Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
-</Note>
+<Warning>
+  Always validate player data server-side. Never trust client-side data for important operations like money transfers or job assignments.
+</Warning>
+
+## Tips and best practices
+
+<AccordionGroup>
+  <Accordion title="Always check if player exists">
+    ```lua
+    local player = exports.qbx_core:GetPlayer(source)
+    if not player then return end
+    
+    -- Safe to use player here
+    ```
+  </Accordion>
+  
+  <Accordion title="Use citizenid for offline operations">
+    ```lua
+    -- This works even if player is offline
+    local player = exports.qbx_core:GetOfflinePlayer('A1234567')
+    if player then
+        exports.qbx_core:AddMoney(player.PlayerData.source or player.PlayerData.citizenid, 'bank', 1000)
+    end
+    ```
+  </Accordion>
+  
+  <Accordion title="Handle money operations properly">
+    ```lua
+    -- AddMoney returns boolean for success
+    local success = exports.qbx_core:AddMoney(source, 'cash', 500)
+    
+    if success then
+        -- Money was added
+    else
+        -- Failed to add money
+    end
+    ```
+  </Accordion>
+  
+  <Accordion title="Use job types for categorization">
+    ```lua
+    -- Jobs have types for easy filtering
+    ['police'] = {
+        label = 'LSPD',
+        type = 'leo',  -- Law enforcement
+        -- ...
+    }
+    
+    -- Check player's job type
+    if player.PlayerData.job.type == 'leo' then
+        -- Player is law enforcement
+    end
+    ```
+  </Accordion>
+</AccordionGroup>

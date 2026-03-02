@@ -1,0 +1,180 @@
+---
+title: Hooks System
+description: Event hooks system for extensible resource integration
+icon: hook
+---
+
+The hooks system provides a way to register callback functions that can intercept and modify events from other resources. This allows you to extend functionality without modifying the original code.
+
+## Overview
+
+Hooks allow resources to register callbacks that are triggered by specific events. Each hook can return `false` to cancel the event, making them ideal for validation and permission checks.
+
+<Note>
+The hooks system is based on [ox_inventory's hooks implementation](https://github.com/overextended/ox_inventory/blob/main/modules/hooks/server.lua).
+</Note>
+
+## Exports
+
+### registerHook
+
+Registers a callback function to be triggered by a resource event.
+
+```lua
+exports.qbx_core:registerHook(event, cb)
+```
+
+#### Parameters
+
+- `event` (string) - The event name to hook into
+- `cb` (function) - The callback function to execute when the event is triggered
+
+#### Returns
+
+- `hookId` (integer) - A unique identifier for the registered hook
+
+#### Callback Behavior
+
+- The callback receives the event payload as its argument
+- Returning `false` from the callback cancels the event
+- Returning any other value (or no return) allows the event to continue
+
+#### Example
+
+```lua
+-- Register a hook to validate vehicle spawning
+local hookId = exports.qbx_core:registerHook('vehicleSpawned', function(payload)
+    local vehicle = payload.vehicle
+    local player = payload.player
+    
+    -- Check if player has permission to spawn this vehicle
+    if not hasPermission(player, vehicle) then
+        print('Player does not have permission to spawn vehicle')
+        return false  -- Cancel the spawn
+    end
+    
+    -- Allow the spawn to continue
+    return true
+end)
+```
+
+### removeHooks
+
+Removes a previously registered hook by its ID.
+
+```lua
+exports.qbx_core:removeHooks(id)
+```
+
+#### Parameters
+
+- `id` (number) - The hookId returned from `registerHook`
+
+#### Example
+
+```lua
+-- Remove a specific hook
+local hookId = exports.qbx_core:registerHook('someEvent', function(payload)
+    -- Hook logic
+end)
+
+-- Later, remove the hook
+exports.qbx_core:removeHooks(hookId)
+```
+
+## How It Works
+
+### Event Triggering
+
+When an event is triggered, all registered hooks for that event are executed in order:
+
+1. Each hook callback is called with the event payload
+2. Execution time is measured for performance monitoring
+3. If a hook takes longer than 100ms, a warning is logged
+4. If any hook returns `false`, the event is cancelled immediately
+5. All hooks must complete successfully for the event to proceed
+
+### Performance Monitoring
+
+The hooks system automatically tracks execution time and warns about slow hooks:
+
+```lua
+-- From hooks.lua:21-23
+if executionTime >= 100000 then
+    warn(('Execution of event hook "%s:%s:%s" took %.2fms.')
+        :format(hook.resource, event, i, executionTime / 1e3))
+end
+```
+
+<Warning>
+Keep hook callbacks fast and efficient. Hooks that take longer than 100ms will be logged as a performance warning.
+</Warning>
+
+### Automatic Cleanup
+
+Hooks are automatically cleaned up when a resource stops:
+
+```lua
+-- From hooks.lua:67
+AddEventHandler('onResourceStop', removeResourceHooks)
+```
+
+This ensures no orphaned hooks remain when resources are restarted or stopped.
+
+## Advanced Usage
+
+### Multiple Hooks on Same Event
+
+You can register multiple hooks for the same event. They will execute in the order they were registered:
+
+```lua
+-- First validation hook
+exports.qbx_core:registerHook('itemUsed', function(payload)
+    if not isValidItem(payload.item) then
+        return false
+    end
+end)
+
+-- Second permission hook
+exports.qbx_core:registerHook('itemUsed', function(payload)
+    if not hasPermission(payload.player, payload.item) then
+        return false
+    end
+end)
+```
+
+### Hook Lifecycle
+
+```lua
+-- Register hook when resource starts
+local myHookId
+
+AddEventHandler('onResourceStart', function(resourceName)
+    if GetCurrentResourceName() ~= resourceName then return end
+    
+    myHookId = exports.qbx_core:registerHook('playerLoaded', function(payload)
+        print('Player loaded:', payload.playerId)
+    end)
+end)
+
+-- Clean up when resource stops
+AddEventHandler('onResourceStop', function(resourceName)
+    if GetCurrentResourceName() ~= resourceName then return end
+    
+    if myHookId then
+        exports.qbx_core:removeHooks(myHookId)
+    end
+end)
+```
+
+<Note>
+Automatic cleanup happens when resources stop, but you can manually remove hooks if needed for dynamic behavior.
+</Note>
+
+## Best Practices
+
+1. **Keep hooks fast** - Avoid heavy computations or blocking operations
+2. **Return explicit false** - Only return `false` when you want to cancel the event
+3. **Store hook IDs** - Save the returned hookId if you need to remove the hook later
+4. **Handle errors** - The system uses `pcall` internally, but your hooks should still handle errors gracefully
+5. **Use descriptive event names** - Choose clear, specific event names to avoid conflicts

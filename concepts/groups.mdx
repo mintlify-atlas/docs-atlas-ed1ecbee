@@ -1,0 +1,446 @@
+---
+title: Group Management
+description: Managing jobs and gangs dynamically at runtime
+icon: layer-group
+---
+
+## Overview
+
+Qbox Core provides a comprehensive group management system for creating, modifying, and removing jobs and gangs at runtime. All changes can optionally be persisted to the shared configuration files.
+
+## Group Types
+
+```lua server/groups.lua
+---@enum GroupType
+GroupType = {
+    JOB = 'job',
+    GANG = 'gang'
+}
+```
+
+## Creating Groups
+
+### Create a Single Job
+
+```lua server/groups.lua
+local success, message = exports.qbx_core:CreateJob(jobName, job, commitToFile)
+```
+
+**Parameters:**
+- `jobName` (string) - Unique job identifier (must be lowercase)
+- `job` (table) - Job data containing label, grades, etc.
+- `commitToFile` (boolean) - Whether to save to `shared/jobs.lua`
+
+**Returns:**
+- `success` (boolean) - Whether the operation succeeded
+- `message` (string) - Success or error message
+
+**Example:**
+
+```lua
+local success, msg = exports.qbx_core:CreateJob('security', {
+    label = 'Security Services',
+    type = 'security',
+    defaultDuty = true,
+    offDutyPay = false,
+    grades = {
+        [0] = {
+            name = 'Guard',
+            payment = 50
+        },
+        [1] = {
+            name = 'Supervisor',
+            payment = 75,
+            isboss = true,
+            bankAuth = true
+        }
+    }
+}, true)
+
+if success then
+    print(msg) -- "Job 'security' created/updated successfully."
+end
+```
+
+### Create Multiple Jobs
+
+```lua server/groups.lua
+local success, message = exports.qbx_core:CreateJobs(newJobs, commitToFile)
+```
+
+**Example:**
+
+```lua
+local jobs = {
+    ['delivery'] = {
+        label = 'Delivery Driver',
+        defaultDuty = true,
+        offDutyPay = false,
+        grades = {
+            [0] = { name = 'Driver', payment = 45 },
+            [1] = { name = 'Manager', payment = 60, isboss = true }
+        }
+    },
+    ['mining'] = {
+        label = 'Mining Company',
+        defaultDuty = true,
+        offDutyPay = false,
+        grades = {
+            [0] = { name = 'Miner', payment = 55 },
+            [1] = { name = 'Foreman', payment = 80, isboss = true, bankAuth = true }
+        }
+    }
+}
+
+local success, msg = exports.qbx_core:CreateJobs(jobs, true)
+print(msg) -- "All jobs created/updated successfully."
+```
+
+### Create Gangs
+
+```lua server/groups.lua
+exports.qbx_core:CreateGangs(newGangs, commitToFile)
+```
+
+**Example:**
+
+```lua
+exports.qbx_core:CreateGangs({
+    ['mafia'] = {
+        label = 'The Mafia',
+        grades = {
+            [0] = { name = 'Associate' },
+            [1] = { name = 'Soldier' },
+            [2] = { name = 'Capo' },
+            [3] = { name = 'Boss', isboss = true, bankAuth = true }
+        }
+    },
+    ['yakuza'] = {
+        label = 'Yakuza',
+        grades = {
+            [0] = { name = 'Kobun' },
+            [1] = { name = 'Wakashu' },
+            [2] = { name = 'Oyabun', isboss = true, bankAuth = true }
+        }
+    }
+}, true)
+```
+
+## Removing Groups
+
+### Remove a Job
+
+```lua server/groups.lua
+local success, message = exports.qbx_core:RemoveJob(jobName, commitToFile)
+```
+
+**Returns:**
+- `success` (boolean)
+- `message` (string) - 'success', 'invalid_job_name', or 'job_not_exists'
+
+**Example:**
+
+```lua
+local success, msg = exports.qbx_core:RemoveJob('delivery', true)
+if success then
+    print('Job removed successfully')
+else
+    print('Error:', msg)
+end
+```
+
+### Remove a Gang
+
+```lua server/groups.lua
+local success, message = exports.qbx_core:RemoveGang(gangName, commitToFile)
+```
+
+## Updating Group Data
+
+### Update Job Data
+
+Updates job properties without modifying grades.
+
+```lua server/groups.lua
+exports.qbx_core:UpsertJobData(name, data, commitToFile)
+```
+
+**Example:**
+
+```lua
+exports.qbx_core:UpsertJobData('police', {
+    label = 'Los Santos Police Department',
+    type = 'leo',
+    defaultDuty = true,
+    offDutyPay = false
+}, true)
+```
+
+### Update Gang Data
+
+```lua server/groups.lua
+exports.qbx_core:UpsertGangData(name, data, commitToFile)
+```
+
+**Example:**
+
+```lua
+exports.qbx_core:UpsertGangData('ballas', {
+    label = 'Ballas Gang'
+}, true)
+```
+
+## Managing Grades
+
+### Add or Update Job Grade
+
+```lua server/groups.lua
+exports.qbx_core:UpsertJobGrade(name, grade, data, commitToFile)
+```
+
+**Example:**
+
+```lua
+-- Add a new grade 5 to police
+exports.qbx_core:UpsertJobGrade('police', 5, {
+    name = 'Assistant Chief',
+    payment = 175,
+    isboss = true,
+    bankAuth = true
+}, true)
+
+-- Update existing grade
+exports.qbx_core:UpsertJobGrade('police', 2, {
+    name = 'Senior Officer',
+    payment = 110
+}, true)
+```
+
+### Add or Update Gang Grade
+
+```lua server/groups.lua
+exports.qbx_core:UpsertGangGrade(name, grade, data, commitToFile)
+```
+
+**Example:**
+
+```lua
+exports.qbx_core:UpsertGangGrade('ballas', 4, {
+    name = 'Kingpin',
+    isboss = true,
+    bankAuth = true
+}, true)
+```
+
+### Remove Job Grade
+
+```lua server/groups.lua
+exports.qbx_core:RemoveJobGrade(name, grade, commitToFile)
+```
+
+**Example:**
+
+```lua
+exports.qbx_core:RemoveJobGrade('police', 5, true)
+```
+
+### Remove Gang Grade
+
+```lua server/groups.lua
+exports.qbx_core:RemoveGangGrade(name, grade, commitToFile)
+```
+
+## Getting Group Data
+
+### Get All Jobs
+
+```lua server/groups.lua
+local jobs = exports.qbx_core:GetJobs()
+
+for jobName, jobData in pairs(jobs) do
+    print(jobName, jobData.label)
+    for grade, gradeData in pairs(jobData.grades) do
+        print('  Grade', grade, gradeData.name, '$' .. gradeData.payment)
+    end
+end
+```
+
+### Get All Gangs
+
+```lua server/groups.lua
+local gangs = exports.qbx_core:GetGangs()
+```
+
+### Get Specific Job
+
+```lua server/groups.lua
+local policeJob = exports.qbx_core:GetJob('police')
+if policeJob then
+    print('Found job:', policeJob.label)
+    print('Default duty:', policeJob.defaultDuty)
+    print('Job type:', policeJob.type)
+end
+```
+
+### Get Specific Gang
+
+```lua server/groups.lua
+local ballasGang = exports.qbx_core:GetGang('ballas')
+```
+
+## Client-Side Group Fetching
+
+Clients can fetch the group cache:
+
+```lua
+-- Client-side
+local groups = lib.callback.await('qbx_core:server:getGroups', false)
+
+local jobs = groups.jobs
+local gangs = groups.gangs
+```
+
+## File Persistence
+
+When `commitToFile` is `true`, changes are written to:
+- `shared/jobs.lua` - For jobs
+- `shared/gangs.lua` - For gangs
+
+The conversion function formats the data properly:
+
+```lua server/groups.lua
+local function convertGroupsToPlainText(groupTable, type)
+    -- Converts groups to formatted Lua code
+    -- Preserves comments and structure
+    -- Escapes special characters in strings
+end
+```
+
+### Example Generated Output
+
+```lua shared/jobs.lua
+---Job names must be lower case (top level table key)
+---@type table<string, Job>
+return {
+    ['police'] = {
+        label = 'LSPD',
+        defaultDuty = true,
+        offDutyPay = false,
+        grades = {
+            [0] = { name = 'Recruit', payment = 50 },
+            [1] = { name = 'Officer', payment = 75 },
+            [2] = { name = 'Sergeant', payment = 100, isboss = true, bankAuth = true },
+        },
+    },
+}
+```
+
+## Events
+
+### Job Update Events
+
+```lua
+-- Server event
+AddEventHandler('qbx_core:server:onJobUpdate', function(jobName, job)
+    if job then
+        print('Job updated:', jobName)
+    else
+        print('Job removed:', jobName)
+    end
+end)
+
+-- Client event
+RegisterNetEvent('qbx_core:client:onJobUpdate', function(jobName, job)
+    -- Update client-side cache
+end)
+```
+
+### Gang Update Events
+
+```lua
+-- Server event
+AddEventHandler('qbx_core:server:onGangUpdate', function(gangName, gang)
+    if gang then
+        print('Gang updated:', gangName)
+    else
+        print('Gang removed:', gangName)
+    end
+end)
+
+-- Client event
+RegisterNetEvent('qbx_core:client:onGangUpdate', function(gangName, gang)
+    -- Update client-side cache
+end)
+```
+
+## Validation
+
+Group names are automatically validated:
+
+```lua server/groups.lua
+for name in pairs(jobs) do
+    if name ~= name:lower() then
+        lib.print.error(('jobs.lua contains a job name with capital letters: %s'):format(name))
+    end
+end
+```
+
+<Warning>
+All job and gang names must be lowercase. Capital letters will generate errors.
+</Warning>
+
+## Example: Dynamic Job Creation System
+
+```lua
+-- Create a job creation UI for admins
+RegisterCommand('createjob', function(source, args)
+    if not IsPlayerAceAllowed(source, 'admin') then return end
+    
+    -- Get job data from admin UI
+    local jobData = {
+        label = args[2],
+        defaultDuty = true,
+        offDutyPay = false,
+        grades = {}
+    }
+    
+    -- Add grades
+    for i = 0, 3 do
+        jobData.grades[i] = {
+            name = 'Grade ' .. i,
+            payment = 50 + (i * 25)
+        }
+    end
+    
+    -- Create the job
+    local success, msg = exports.qbx_core:CreateJob(args[1], jobData, true)
+    
+    if success then
+        print('Job created:', msg)
+    else
+        print('Failed to create job:', msg)
+    end
+end, true)
+
+-- Example: /createjob delivery "Delivery Services"
+```
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Use Lowercase Names" icon="text-size">
+    Always use lowercase for job and gang names to avoid validation errors.
+  </Card>
+  
+  <Card title="Commit Important Changes" icon="floppy-disk">
+    Set `commitToFile = true` for permanent changes that should survive server restarts.
+  </Card>
+  
+  <Card title="Validate Before Creating" icon="circle-check">
+    Check if a job/gang exists before creating to avoid accidental overwrites.
+  </Card>
+  
+  <Card title="Handle Errors" icon="triangle-exclamation">
+    Always check the success return value and handle errors appropriately.
+  </Card>
+</CardGroup>

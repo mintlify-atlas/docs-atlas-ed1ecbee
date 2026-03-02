@@ -1,0 +1,204 @@
+---
+title: Shared Configuration
+description: Configure shared settings used by both server and client for Qbox Core
+---
+
+The shared configuration file (`config/shared.lua`) contains settings that are used by both server and client sides of Qbox Core.
+
+## Basic Settings
+
+<ParamField path="serverName" type="string" default="Server">
+  The name of your server. This is displayed in various places including the queue system and notifications.
+</ParamField>
+
+<ParamField path="defaultSpawn" type="vector4" default="vec4(-540.58, -212.02, 37.65, 208.88)">
+  Default spawn location for players when no other spawn point is set.
+  
+  Format: `vec4(x, y, z, heading)`
+  
+  **Default Location:** Near Legion Square, Los Santos
+</ParamField>
+
+<ParamField path="notifyPosition" type="string" default="top-right">
+  Position where notifications appear on screen.
+  
+  **Available Options:**
+  - `'top'`
+  - `'top-right'`
+  - `'top-left'`
+  - `'bottom'`
+  - `'bottom-right'`
+  - `'bottom-left'`
+</ParamField>
+
+## Starter Items
+
+Items given to players when they create a new character.
+
+<ParamField path="starterItems" type="table[]">
+  Array of items to give to new characters. Each item can have metadata generated dynamically.
+  
+  **Item Configuration:**
+  ```lua
+  ---@type { name: string, amount: integer, metadata: fun(source: number): table }[]
+  ```
+  
+  Each item has:
+  - `name` (string) - Item name matching your inventory item
+  - `amount` (integer) - Quantity to give
+  - `metadata` (function, optional) - Function that returns item metadata
+  
+  **Default Starter Items:**
+  ```lua
+  starterItems = {
+      { name = 'phone', amount = 1 },
+      { 
+          name = 'id_card', 
+          amount = 1, 
+          metadata = function(source)
+              assert(GetResourceState('qbx_idcard') == 'started', 
+                  'qbx_idcard resource not found. Required to give an id_card as a starting item')
+              return exports.qbx_idcard:GetMetaLicense(source, {'id_card'})
+          end
+      },
+      { 
+          name = 'driver_license', 
+          amount = 1, 
+          metadata = function(source)
+              assert(GetResourceState('qbx_idcard') == 'started', 
+                  'qbx_idcard resource not found. Required to give an id_card as a starting item')
+              return exports.qbx_idcard:GetMetaLicense(source, {'driver_license'})
+          end
+      },
+  }
+  ```
+</ParamField>
+
+### Starter Items Examples
+
+<CodeGroup>
+```lua Basic Items
+starterItems = {
+    { name = 'phone', amount = 1 },
+    { name = 'water', amount = 2 },
+    { name = 'sandwich', amount = 2 },
+    { name = 'radio', amount = 1 },
+}
+```
+
+```lua Items with Metadata
+starterItems = {
+    { name = 'phone', amount = 1 },
+    { 
+        name = 'id_card', 
+        amount = 1,
+        metadata = function(source)
+            return exports.qbx_idcard:GetMetaLicense(source, {'id_card'})
+        end
+    },
+    {
+        name = 'backpack',
+        amount = 1,
+        metadata = function(source)
+            return {
+                slots = 10,
+                weight = 50000,
+            }
+        end
+    },
+}
+```
+
+```lua VIP Starter Items
+-- You can check player permissions in metadata functions
+starterItems = {
+    { name = 'phone', amount = 1 },
+    { 
+        name = 'cash', 
+        amount = 1,
+        metadata = function(source)
+            -- Give VIP players more starting cash
+            if IsPlayerAceAllowed(source, 'vip') then
+                return { amount = 10000 }
+            else
+                return { amount = 5000 }
+            end
+        end
+    },
+}
+```
+</CodeGroup>
+
+### Adding Custom Starter Items
+
+To add custom starter items:
+
+1. **Simple items** (no special properties):
+   ```lua
+   { name = 'water_bottle', amount = 5 }
+   ```
+
+2. **Items with static metadata**:
+   ```lua
+   { 
+       name = 'weapon_pistol', 
+       amount = 1,
+       metadata = function(source)
+           return {
+               ammo = 50,
+               serial = 'STARTER' .. source,
+           }
+       end
+   }
+   ```
+
+3. **Items from other resources**:
+   ```lua
+   { 
+       name = 'custom_item', 
+       amount = 1,
+       metadata = function(source)
+           assert(GetResourceState('my_resource') == 'started', 
+               'my_resource must be running')
+           return exports.my_resource:GetItemData(source)
+       end
+   }
+   ```
+
+<Warning>
+  When using metadata functions that depend on other resources, always use `assert()` or check `GetResourceState()` to ensure the required resource is running. This prevents errors during character creation.
+</Warning>
+
+## Customization Tips
+
+### Server Name
+
+Your server name appears in:
+- Queue system display
+- Connection messages
+- Various UI elements
+
+```lua
+serverName = 'My Awesome RP Server'
+```
+
+### Default Spawn
+
+Choose a safe, accessible location for default spawns:
+
+```lua
+-- Popular spawn locations
+defaultSpawn = vec4(-1037.78, -2737.81, 20.17, 329.94) -- Airport
+defaultSpawn = vec4(214.52, -808.38, 31.01, 249.87)   -- Police Station
+defaultSpawn = vec4(-365.38, -132.08, 38.68, 252.32)  -- Bus Station
+```
+
+### Notification Position
+
+Choose based on your UI layout:
+
+```lua
+notifyPosition = 'top-right'    -- Default, common choice
+notifyPosition = 'bottom-right' -- Good for minimal UI
+notifyPosition = 'top'          -- Center top, very visible
+```

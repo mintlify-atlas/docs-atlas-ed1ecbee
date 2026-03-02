@@ -1,0 +1,447 @@
+---
+title: Server Functions
+description: Core server-side functions for Qbox Core framework
+---
+
+## Player Getters
+
+### GetSource
+
+Get the server ID of a player by their identifier.
+
+<ParamField path="identifier" type="Identifier" required>
+  Player identifier type: `'steam'`, `'license'`, `'license2'`, `'xbl'`, `'ip'`, `'discord'`, or `'live'`
+</ParamField>
+
+<ResponseField name="source" type="integer">
+  Server ID of the player with the matching identifier, or `0` if no player found
+</ResponseField>
+
+```lua
+local source = exports.qbx_core:GetSource('license:abc123')
+if source ~= 0 then
+    print('Player found: ' .. source)
+end
+```
+
+### GetPlayer
+
+Get a player object by their source or identifier.
+
+<ParamField path="source" type="Source | string" required>
+  Server ID or identifier string of the player
+</ParamField>
+
+<ResponseField name="player" type="Player">
+  Player object containing all player data and functions
+</ResponseField>
+
+```lua
+-- Get by source
+local player = exports.qbx_core:GetPlayer(source)
+
+-- Get by identifier
+local player = exports.qbx_core:GetPlayer('license:abc123')
+
+if player then
+    print('Player name: ' .. player.PlayerData.name)
+end
+```
+
+### GetPlayerByCitizenId
+
+Get a player object by their citizen ID.
+
+<ParamField path="citizenid" type="string" required>
+  The citizen ID of the player
+</ParamField>
+
+<ResponseField name="player" type="Player | nil">
+  Player object if found, otherwise `nil`
+</ResponseField>
+
+```lua
+local player = exports.qbx_core:GetPlayerByCitizenId('ABC12345')
+if player then
+    print('Found player: ' .. player.PlayerData.name)
+end
+```
+
+### GetPlayerByPhone
+
+Get a player object by their phone number.
+
+<ParamField path="number" type="string" required>
+  The phone number to search for
+</ParamField>
+
+<ResponseField name="player" type="Player | nil">
+  Player object if found, otherwise `nil`
+</ResponseField>
+
+```lua
+local player = exports.qbx_core:GetPlayerByPhone('555-1234')
+if player then
+    print('Phone belongs to: ' .. player.PlayerData.name)
+end
+```
+
+### GetQBPlayers
+
+Get all online players as a table of Player objects.
+
+<ResponseField name="players" type="table<Source, Player>">
+  Table indexed by source containing all online Player objects
+</ResponseField>
+
+```lua
+local players = exports.qbx_core:GetQBPlayers()
+for source, player in pairs(players) do
+    print('Player: ' .. player.PlayerData.name)
+end
+```
+
+## Duty Functions
+
+### GetDutyCountJob
+
+Get the count and sources of all on-duty players for a specific job.
+
+<ParamField path="job" type="string" required>
+  Job name to check
+</ParamField>
+
+<ResponseField name="count" type="integer">
+  Number of on-duty players
+</ResponseField>
+
+<ResponseField name="players" type="Source[]">
+  Array of player sources who are on duty
+</ResponseField>
+
+```lua
+local count, players = exports.qbx_core:GetDutyCountJob('police')
+print('Officers on duty: ' .. count)
+for _, src in ipairs(players) do
+    print('Officer source: ' .. src)
+end
+```
+
+### GetDutyCountType
+
+Get the count and sources of all on-duty players for a specific job type.
+
+<ParamField path="type" type="string" required>
+  Job type to check (e.g., 'leo', 'ems')
+</ParamField>
+
+<ResponseField name="count" type="integer">
+  Number of on-duty players of that type
+</ResponseField>
+
+<ResponseField name="players" type="Source[]">
+  Array of player sources who are on duty
+</ResponseField>
+
+```lua
+local count, players = exports.qbx_core:GetDutyCountType('leo')
+print('Law enforcement on duty: ' .. count)
+```
+
+## Routing Buckets
+
+### SetPlayerBucket
+
+Set a player's routing bucket.
+
+<ParamField path="source" type="Source" required>
+  Player server ID
+</ParamField>
+
+<ParamField path="bucket" type="integer" required>
+  Bucket ID to set
+</ParamField>
+
+<ResponseField name="success" type="boolean">
+  `true` if bucket was set successfully, `false` otherwise
+</ResponseField>
+
+```lua
+local success = exports.qbx_core:SetPlayerBucket(source, 1)
+if success then
+    print('Player moved to bucket 1')
+end
+```
+
+### GetPlayersInBucket
+
+Get all players in a specific routing bucket.
+
+<ParamField path="bucket" type="integer" required>
+  Bucket ID to check
+</ParamField>
+
+<ResponseField name="players" type="Source[] | boolean">
+  Array of player sources in the bucket, or `false` if bucket is empty
+</ResponseField>
+
+```lua
+local players = exports.qbx_core:GetPlayersInBucket(1)
+if players then
+    for _, src in ipairs(players) do
+        print('Player in bucket: ' .. src)
+    end
+end
+```
+
+## Useable Items
+
+### CreateUseableItem
+
+Register a useable item with a callback function.
+
+<ParamField path="item" type="string" required>
+  Item name
+</ParamField>
+
+<ParamField path="data" type="function" required>
+  Callback function with parameters `(source, item)`
+</ParamField>
+
+```lua
+exports.qbx_core:CreateUseableItem('lockpick', function(source, item)
+    local player = exports.qbx_core:GetPlayer(source)
+    -- Handle lockpick usage
+    print('Player used lockpick')
+end)
+```
+
+### CanUseItem
+
+Check if an item is registered as useable.
+
+<ParamField path="item" type="string" required>
+  Item name to check
+</ParamField>
+
+<ResponseField name="useable" type="unknown">
+  The registered callback function if useable, otherwise `nil`
+</ResponseField>
+
+```lua
+local canUse = exports.qbx_core:CanUseItem('lockpick')
+if canUse then
+    print('Lockpick is a useable item')
+end
+```
+
+## Permission Functions
+
+### IsWhitelisted
+
+Check if a player is whitelisted on the server.
+
+<ParamField path="source" type="Source" required>
+  Player server ID
+</ParamField>
+
+<ResponseField name="whitelisted" type="boolean">
+  `true` if player is whitelisted or whitelist is disabled, `false` otherwise
+</ResponseField>
+
+```lua
+if exports.qbx_core:IsWhitelisted(source) then
+    print('Player is whitelisted')
+end
+```
+
+### IsOptin
+
+Check if an admin has opted into receiving admin reports.
+
+<ParamField path="source" type="Source" required>
+  Player server ID
+</ParamField>
+
+<ResponseField name="optin" type="boolean">
+  `true` if opted in or opt-in not required, `false` otherwise
+</ResponseField>
+
+```lua
+if exports.qbx_core:IsOptin(source) then
+    -- Send admin notification
+end
+```
+
+### ToggleOptin
+
+Toggle an admin's opt-in status for admin reports.
+
+<ParamField path="source" type="Source" required>
+  Player server ID
+</ParamField>
+
+```lua
+exports.qbx_core:ToggleOptin(source)
+```
+
+## Ban Functions
+
+### IsPlayerBanned
+
+Check if a player is banned from the server.
+
+<ParamField path="source" type="Source" required>
+  Player server ID
+</ParamField>
+
+<ResponseField name="banned" type="boolean">
+  `true` if player is banned, `false` otherwise
+</ResponseField>
+
+<ResponseField name="message" type="string | nil">
+  Ban message to display to the player if banned
+</ResponseField>
+
+```lua
+local isBanned, message = exports.qbx_core:IsPlayerBanned(source)
+if isBanned then
+    DropPlayer(source, message)
+end
+```
+
+### ExploitBan
+
+Ban a player permanently for exploiting.
+
+<ParamField path="playerId" type="Source" required>
+  Player server ID to ban
+</ParamField>
+
+<ParamField path="origin" type="string" required>
+  Reason/origin of the exploit ban
+</ParamField>
+
+```lua
+exports.qbx_core:ExploitBan(source, 'Noclip detected')
+```
+
+## Notification
+
+### Notify
+
+Send a notification to a player.
+
+<ParamField path="source" type="Source" required>
+  Player server ID
+</ParamField>
+
+<ParamField path="text" type="string | table" required>
+  Notification text or table with `text` and `caption`
+</ParamField>
+
+<ParamField path="notifyType" type="string">
+  Type: `'success'`, `'error'`, `'info'`, `'warning'`
+</ParamField>
+
+<ParamField path="duration" type="number">
+  Duration in milliseconds
+</ParamField>
+
+```lua
+exports.qbx_core:Notify(source, 'Welcome to the server!', 'success', 5000)
+
+-- Or with subtitle
+exports.qbx_core:Notify(source, {
+    text = 'Job Payment',
+    caption = 'You received $500'
+}, 'success')
+```
+
+## Group Functions
+
+### HasGroup
+
+Check if a player has a specific job or gang.
+
+<ParamField path="source" type="Source" required>
+  Player server ID
+</ParamField>
+
+<ParamField path="filter" type="string | string[] | table<string, number>" required>
+  Job/gang name, array of names, or table with name and minimum grade
+</ParamField>
+
+<ResponseField name="hasGroup" type="boolean">
+  `true` if player has the specified group, `false` otherwise
+</ResponseField>
+
+```lua
+-- Check single job
+if exports.qbx_core:HasGroup(source, 'police') then
+    print('Player is police')
+end
+
+-- Check multiple
+if exports.qbx_core:HasGroup(source, {'police', 'sheriff'}) then
+    print('Player is law enforcement')
+end
+
+-- Check with minimum grade
+if exports.qbx_core:HasGroup(source, {police = 3}) then
+    print('Player is police sergeant or higher')
+end
+```
+
+### GetGroups
+
+Get all groups (jobs and gangs) a player belongs to.
+
+<ParamField path="source" type="Source" required>
+  Player server ID
+</ParamField>
+
+<ResponseField name="groups" type="table<string, integer>">
+  Table of group names to grade levels
+</ResponseField>
+
+```lua
+local groups = exports.qbx_core:GetGroups(source)
+for groupName, grade in pairs(groups) do
+    print(groupName .. ' - Grade: ' .. grade)
+end
+```
+
+## Vehicle Functions
+
+### DeleteVehicle
+
+Disable persistence and delete a vehicle entity.
+
+<ParamField path="vehicle" type="number" required>
+  Vehicle entity handle
+</ParamField>
+
+```lua
+local vehicle = GetVehiclePedIsIn(GetPlayerPed(source), false)
+exports.qbx_core:DeleteVehicle(vehicle)
+```
+
+## Utility Functions
+
+### GetCoreVersion
+
+Get the current version of qbx_core.
+
+<ParamField path="InvokingResource" type="string">
+  Name of the resource calling this function
+</ParamField>
+
+<ResponseField name="version" type="string">
+  Version string from resource manifest
+</ResponseField>
+
+```lua
+local version = exports.qbx_core:GetCoreVersion(GetInvokingResource())
+print('Qbox Core version: ' .. version)
+```

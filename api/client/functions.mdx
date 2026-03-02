@@ -1,0 +1,386 @@
+---
+title: Client Functions
+description: Client-side functions and exports for Qbox Core
+---
+
+## Player Data
+
+### GetPlayerData
+
+Returns the current player's data.
+
+```lua
+local playerData = exports.qbx_core:GetPlayerData()
+```
+
+<ResponseField name="playerData" type="PlayerData?">
+  The player's data object, or nil if not logged in
+</ResponseField>
+
+**Example:**
+```lua
+local playerData = exports.qbx_core:GetPlayerData()
+if playerData then
+    print("Player name: " .. playerData.charinfo.firstname .. " " .. playerData.charinfo.lastname)
+    print("Job: " .. playerData.job.name)
+end
+```
+
+## Group Functions
+
+### HasPrimaryGroup
+
+Checks if the player has a specific primary group (job or gang).
+
+```lua
+local hasPrimary = exports.qbx_core:HasPrimaryGroup(filter)
+```
+
+<ParamField path="filter" type="string | string[] | table<string, number>">
+  The group(s) to check for. Can be a single group name, array of names, or table with grade requirements
+</ParamField>
+
+<ResponseField name="hasPrimary" type="boolean">
+  True if the player has the primary group, false otherwise
+</ResponseField>
+
+**Example:**
+```lua
+-- Check single group
+if exports.qbx_core:HasPrimaryGroup('police') then
+    print("Player is a police officer")
+end
+
+-- Check multiple groups
+if exports.qbx_core:HasPrimaryGroup({'police', 'ambulance'}) then
+    print("Player is police or ambulance")
+end
+
+-- Check with grade requirement
+if exports.qbx_core:HasPrimaryGroup({police = 2}) then
+    print("Player is police with grade 2 or higher")
+end
+```
+
+### HasGroup
+
+Checks if the player has a specific group (job or gang), not necessarily as primary.
+
+```lua
+local hasGroup = exports.qbx_core:HasGroup(filter)
+```
+
+<ParamField path="filter" type="string | string[] | table<string, number>">
+  The group(s) to check for. Can be a single group name, array of names, or table with grade requirements
+</ParamField>
+
+<ResponseField name="hasGroup" type="boolean">
+  True if the player has the group, false otherwise
+</ResponseField>
+
+**Example:**
+```lua
+if exports.qbx_core:HasGroup('police') then
+    print("Player has police group")
+end
+```
+
+### GetGroups
+
+Returns all groups the player belongs to.
+
+```lua
+local groups = exports.qbx_core:GetGroups()
+```
+
+<ResponseField name="groups" type="table<string, integer>">
+  A table of group names and their corresponding grades
+</ResponseField>
+
+**Example:**
+```lua
+local groups = exports.qbx_core:GetGroups()
+for groupName, grade in pairs(groups) do
+    print(groupName .. ": " .. grade)
+end
+```
+
+## Job & Gang Functions
+
+### GetJobs
+
+Returns all available jobs in the server.
+
+```lua
+local jobs = exports.qbx_core:GetJobs()
+```
+
+<ResponseField name="jobs" type="table<string, Job>">
+  A table of all jobs indexed by job name
+</ResponseField>
+
+**Example:**
+```lua
+local jobs = exports.qbx_core:GetJobs()
+for jobName, jobData in pairs(jobs) do
+    print(jobName .. ": " .. jobData.label)
+end
+```
+
+### GetJob
+
+Returns data for a specific job.
+
+```lua
+local job = exports.qbx_core:GetJob(name)
+```
+
+<ParamField path="name" type="string" required>
+  The name of the job to retrieve
+</ParamField>
+
+<ResponseField name="job" type="Job?">
+  The job data, or nil if not found
+</ResponseField>
+
+**Example:**
+```lua
+local policeJob = exports.qbx_core:GetJob('police')
+if policeJob then
+    print("Police label: " .. policeJob.label)
+end
+```
+
+### GetGangs
+
+Returns all available gangs in the server.
+
+```lua
+local gangs = exports.qbx_core:GetGangs()
+```
+
+<ResponseField name="gangs" type="table<string, Gang>">
+  A table of all gangs indexed by gang name
+</ResponseField>
+
+**Example:**
+```lua
+local gangs = exports.qbx_core:GetGangs()
+for gangName, gangData in pairs(gangs) do
+    print(gangName .. ": " .. gangData.label)
+end
+```
+
+### GetGang
+
+Returns data for a specific gang.
+
+```lua
+local gang = exports.qbx_core:GetGang(name)
+```
+
+<ParamField path="name" type="string" required>
+  The name of the gang to retrieve
+</ParamField>
+
+<ResponseField name="gang" type="Gang?">
+  The gang data, or nil if not found
+</ResponseField>
+
+**Example:**
+```lua
+local ballas = exports.qbx_core:GetGang('ballas')
+if ballas then
+    print("Ballas label: " .. ballas.label)
+end
+```
+
+## Vehicle Functions
+
+### GetVehiclesByName
+
+Returns vehicle data by name or all vehicles.
+
+```lua
+local vehicles = exports.qbx_core:GetVehiclesByName(key)
+```
+
+<ParamField path="key" type="string" optional>
+  The vehicle name to retrieve. If omitted, returns all vehicles
+</ParamField>
+
+<ResponseField name="vehicles" type="table<string, Vehicle> | Vehicle">
+  Either a specific vehicle or all vehicles indexed by name
+</ResponseField>
+
+**Example:**
+```lua
+-- Get all vehicles
+local allVehicles = exports.qbx_core:GetVehiclesByName()
+for name, vehicle in pairs(allVehicles) do
+    print(name .. ": " .. vehicle.brand .. " " .. vehicle.name)
+end
+
+-- Get specific vehicle
+local adder = exports.qbx_core:GetVehiclesByName('adder')
+if adder then
+    print("Adder brand: " .. adder.brand)
+end
+```
+
+### GetVehiclesByHash
+
+Returns vehicle data by hash or all vehicles.
+
+```lua
+local vehicles = exports.qbx_core:GetVehiclesByHash(key)
+```
+
+<ParamField path="key" type="number" optional>
+  The vehicle hash to retrieve. If omitted, returns all vehicles
+</ParamField>
+
+<ResponseField name="vehicles" type="table<number, Vehicle> | Vehicle">
+  Either a specific vehicle or all vehicles indexed by hash
+</ResponseField>
+
+**Example:**
+```lua
+-- Get all vehicles by hash
+local vehiclesByHash = exports.qbx_core:GetVehiclesByHash()
+
+-- Get specific vehicle by hash
+local vehicle = exports.qbx_core:GetVehiclesByHash(joaat('adder'))
+```
+
+### GetVehiclesByCategory
+
+Returns vehicles grouped by category.
+
+```lua
+local vehiclesByCategory = exports.qbx_core:GetVehiclesByCategory()
+```
+
+<ResponseField name="vehiclesByCategory" type="table<string, Vehicle[]>">
+  Vehicles grouped by their category
+</ResponseField>
+
+**Example:**
+```lua
+local categorized = exports.qbx_core:GetVehiclesByCategory()
+for category, vehicles in pairs(categorized) do
+    print("Category: " .. category)
+    for i, vehicle in ipairs(vehicles) do
+        print("  - " .. vehicle.name)
+    end
+end
+```
+
+## Weapon Functions
+
+### GetWeapons
+
+Returns weapon data by hash or all weapons.
+
+```lua
+local weapons = exports.qbx_core:GetWeapons(key)
+```
+
+<ParamField path="key" type="number" optional>
+  The weapon hash to retrieve. If omitted, returns all weapons
+</ParamField>
+
+<ResponseField name="weapons" type="table<number, Weapon> | Weapon">
+  Either a specific weapon or all weapons indexed by hash
+</ResponseField>
+
+**Example:**
+```lua
+-- Get all weapons
+local allWeapons = exports.qbx_core:GetWeapons()
+for hash, weapon in pairs(allWeapons) do
+    print(weapon.name .. ": " .. weapon.label)
+end
+
+-- Get specific weapon
+local pistol = exports.qbx_core:GetWeapons(joaat('weapon_pistol'))
+if pistol then
+    print("Pistol damage: " .. pistol.damage)
+end
+```
+
+## Location Functions
+
+### GetLocations
+
+<Warning>This function is deprecated.</Warning>
+
+Returns shared locations.
+
+```lua
+local locations = exports.qbx_core:GetLocations()
+```
+
+<ResponseField name="locations" type="table<string, vector4>">
+  A table of location names and their coordinates
+</ResponseField>
+
+## Notification Function
+
+### Notify
+
+Displays a notification to the player.
+
+```lua
+exports.qbx_core:Notify(text, notifyType, duration, subTitle, notifyPosition, notifyStyle, notifyIcon, notifyIconColor)
+```
+
+<ParamField path="text" type="table | string" required>
+  The notification text. Can be a string or table with `text` and `caption` fields
+</ParamField>
+
+<ParamField path="notifyType" type="NotificationType" optional>
+  The notification type for default styling. Defaults to 'inform'. Options: 'inform', 'error', 'success', 'warning'
+</ParamField>
+
+<ParamField path="duration" type="integer" optional>
+  Duration in milliseconds the notification will remain on screen. Defaults to 5000
+</ParamField>
+
+<ParamField path="subTitle" type="string" optional>
+  Extra text under the title
+</ParamField>
+
+<ParamField path="notifyPosition" type="NotificationPosition" optional>
+  Position of the notification on screen
+</ParamField>
+
+<ParamField path="notifyStyle" type="table" optional>
+  Custom styling object. See [ox_lib documentation](https://coxdocs.dev/ox_lib/Modules/Interface/Client/notify#libnotify)
+</ParamField>
+
+<ParamField path="notifyIcon" type="string" optional>
+  Font Awesome 6 icon name
+</ParamField>
+
+<ParamField path="notifyIconColor" type="string" optional>
+  Custom color for the icon
+</ParamField>
+
+**Example:**
+```lua
+-- Simple text notification
+exports.qbx_core:Notify('Hello World!', 'success')
+
+-- With subtitle
+exports.qbx_core:Notify('Money Received', 'success', 5000, 'You earned $500')
+
+-- Table format
+exports.qbx_core:Notify({
+    text = 'Vehicle Spawned',
+    caption = 'Your vehicle is ready'
+}, 'inform', 3000)
+
+-- With custom icon
+exports.qbx_core:Notify('Police Alert', 'error', 10000, nil, nil, nil, 'shield-halved', '#FF0000')
+```

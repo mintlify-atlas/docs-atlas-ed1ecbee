@@ -1,0 +1,422 @@
+---
+title: Localization
+description: Multi-language support system for translating UI and messages
+---
+
+Qbox Core includes a robust localization system that allows you to easily translate your server's text into multiple languages. The system supports nested translations, variable substitution, and fallback languages.
+
+## Locale Class
+
+The localization system is built around the `Locale` class defined in `shared/locale.lua`.
+
+### Creating a Locale Instance
+
+```lua
+local locale = Locale:new({
+    warnOnMissing = true,  -- Warn when translation keys are missing
+    phrases = {
+        greeting = "Hello, %{name}!",
+        farewell = "Goodbye!"
+    }
+})
+```
+
+### With Fallback Language
+
+```lua
+local fallback = Locale:new({
+    warnOnMissing = false,
+    phrases = require 'locales/en.json'
+})
+
+local locale = Locale:new({
+    warnOnMissing = true,
+    fallbackLang = fallback,
+    phrases = require 'locales/es.json'
+})
+```
+
+## Translation Files
+
+Qbox Core includes 35+ pre-built language files in the `locales/` directory:
+
+- ar.json (Arabic)
+- bg.json (Bulgarian)
+- cn.json (Chinese)
+- cs.json (Czech)
+- da.json (Danish)
+- de.json (German)
+- en.json (English)
+- es.json (Spanish)
+- fi.json (Finnish)
+- fr.json (French)
+- it.json (Italian)
+- ja.json (Japanese)
+- nl.json (Dutch)
+- no.json (Norwegian)
+- pl.json (Polish)
+- pt.json (Portuguese)
+- pt-br.json (Brazilian Portuguese)
+- ru.json (Russian)
+- sv.json (Swedish)
+- tr.json (Turkish)
+- vn.json (Vietnamese)
+- zh-tw.json (Traditional Chinese)
+- ...and more!
+
+### Translation File Structure
+
+Translation files use nested JSON structure:
+
+```json
+{
+    "error": {
+        "not_online": "Player not online",
+        "wrong_format": "Incorrect format",
+        "no_access": "No access to this command"
+    },
+    "success": {
+        "teleported_waypoint": "Teleported To Waypoint."
+    },
+    "info": {
+        "received_paycheck": "You received your paycheck of $%s",
+        "job_info": "Job: %s | Grade: %s | Duty: %s"
+    },
+    "command": {
+        "tp": {
+            "help": "TP To Player or Coords (Admin Only)",
+            "params": {
+                "x": { 
+                    "name": "id/x", 
+                    "help": "ID of player or X position"
+                }
+            }
+        }
+    }
+}
+```
+
+## Using Translations
+
+### Basic Translation
+
+Use the `t()` method to translate a key:
+
+```lua
+local message = locale:t('error.not_online')
+-- Returns: "Player not online"
+```
+
+### Variable Substitution
+
+Pass a table of substitutions as the second parameter:
+
+```lua
+local message = locale:t('info.received_paycheck', { 
+    ['1'] = 5000 
+})
+-- Returns: "You received your paycheck of $5000"
+
+-- Named substitutions
+local phrases = {
+    greeting = "Hello, %{name}! Welcome to %{city}."
+}
+
+local message = locale:t('greeting', {
+    name = "John",
+    city = "Los Santos"
+})
+-- Returns: "Hello, John! Welcome to Los Santos."
+```
+
+Substitutions use the pattern `%{key}` and are replaced with `tostring(value)` (shared/locale.lua:26).
+
+### Multiple Substitutions
+
+```lua
+-- For strings with multiple %s placeholders
+local message = locale:t('info.job_info', {
+    ['1'] = "Police",
+    ['2'] = "Officer",
+    ['3'] = "On Duty"
+})
+-- Returns: "Job: Police | Grade: Officer | Duty: On Duty"
+```
+
+## Locale Methods
+
+### extend()
+
+Add new translations to an existing locale:
+
+```lua
+locale:extend({
+    custom = {
+        message1 = "Custom message",
+        message2 = "Another message"
+    }
+})
+
+-- Access nested translations
+local msg = locale:t('custom.message1')
+```
+
+The extend method automatically flattens nested tables using dot notation (shared/locale.lua:57).
+
+### has()
+
+Check if a translation key exists:
+
+```lua
+if locale:has('error.not_online') then
+    print("Translation exists")
+end
+```
+
+### clear()
+
+Remove all translations:
+
+```lua
+locale:clear()
+```
+
+### replace()
+
+Replace all translations with a new set:
+
+```lua
+locale:replace({
+    greeting = "Hi!",
+    farewell = "Bye!"
+})
+```
+
+### delete()
+
+Remove specific translation keys:
+
+```lua
+-- Delete a single key
+locale:delete('error.not_online')
+
+-- Delete nested keys
+locale:delete({
+    error = {
+        not_online = true,
+        wrong_format = true
+    }
+})
+```
+
+### locale()
+
+Get or set the current locale identifier:
+
+```lua
+-- Set locale
+locale:locale('en')
+
+-- Get locale
+local currentLocale = locale:locale()
+```
+
+## Fallback System
+
+When a translation key is missing:
+
+1. If `warnOnMissing` is true, a warning is printed (shared/locale.lua:107)
+2. If a fallback locale is configured, it's checked for the key (shared/locale.lua:109)
+3. If still not found, the key itself is returned (shared/locale.lua:112)
+
+```lua
+local en = Locale:new({
+    warnOnMissing = false,
+    phrases = { greeting = "Hello" }
+})
+
+local es = Locale:new({
+    warnOnMissing = true,
+    fallbackLang = en,
+    phrases = {}  -- Empty Spanish translations
+})
+
+local msg = es:t('greeting')
+-- Returns: "Hello" (from fallback)
+-- No warning printed
+```
+
+## Adding a New Language
+
+### Step 1: Create Translation File
+
+Create a new JSON file in the `locales/` directory:
+
+```json
+// locales/de.json
+{
+    "error": {
+        "not_online": "Spieler ist nicht online",
+        "wrong_format": "Falsches Format",
+        "no_access": "Kein Zugriff auf diesen Befehl"
+    },
+    "success": {
+        "teleported_waypoint": "Zum Wegpunkt teleportiert."
+    },
+    "info": {
+        "received_paycheck": "Du hast deinen Gehaltsscheck über $%s erhalten"
+    }
+}
+```
+
+### Step 2: Load Translation File
+
+Load the translation file in your resource:
+
+```lua
+-- In your resource's shared/client/server file
+local translations = require 'locales/de.json'
+
+local locale = Locale:new({
+    warnOnMissing = true,
+    phrases = translations
+})
+```
+
+### Step 3: Use in Your Code
+
+```lua
+local message = locale:t('error.not_online')
+lib.notify({
+    description = message,
+    type = 'error'
+})
+```
+
+## Best Practices
+
+### Organize by Category
+
+Group related translations together:
+
+```json
+{
+    "police": {
+        "arrest": "You have been arrested",
+        "released": "You have been released",
+        "wanted": "You are wanted"
+    },
+    "hospital": {
+        "checked_in": "Checked into hospital",
+        "revived": "You have been revived"
+    }
+}
+```
+
+### Use Descriptive Keys
+
+Make keys self-documenting:
+
+```json
+{
+    "error": {
+        "inventory_full": "Inventory is full",
+        "insufficient_funds": "Not enough money",
+        "invalid_amount": "Invalid amount specified"
+    }
+}
+```
+
+### Keep Fallback Updated
+
+Always maintain English (or your primary language) translations:
+
+```lua
+local en = Locale:new({
+    warnOnMissing = true,
+    phrases = require 'locales/en.json'
+})
+
+local userLang = Locale:new({
+    warnOnMissing = false,  -- Don't warn, fallback will handle it
+    fallbackLang = en,
+    phrases = require('locales/' .. config.language .. '.json')
+})
+```
+
+### Avoid Hardcoded Text
+
+Don't use hardcoded strings:
+
+```lua
+-- Bad
+lib.notify({ description = "Player not found" })
+
+-- Good
+lib.notify({ description = locale:t('error.player_not_found') })
+```
+
+## Example: Multi-Language Resource
+
+Here's a complete example of a resource with language support:
+
+```lua
+-- config.lua
+return {
+    locale = 'en'  -- Default language
+}
+
+-- shared.lua
+local config = require 'config'
+local en = require 'locales/en.json'
+local translations = require('locales/' .. config.locale .. '.json')
+
+local fallback = Locale:new({
+    warnOnMissing = false,
+    phrases = en
+})
+
+locale = Locale:new({
+    warnOnMissing = true,
+    fallbackLang = fallback,
+    phrases = translations
+})
+
+-- client.lua
+RegisterCommand('info', function()
+    lib.notify({
+        description = locale:t('info.server_info', {
+            players = GetNumPlayerIndices(),
+            maxPlayers = GetConvarInt('sv_maxclients', 32)
+        })
+    })
+end)
+
+-- locales/en.json
+{
+    "info": {
+        "server_info": "Players: %{players}/%{maxPlayers}"
+    }
+}
+
+-- locales/es.json
+{
+    "info": {
+        "server_info": "Jugadores: %{players}/%{maxPlayers}"
+    }
+}
+```
+
+## Available Translations in Qbox Core
+
+Qbox Core provides translations for:
+
+- Error messages (player not online, wrong format, no access, etc.)
+- Success messages (teleported, character deleted, etc.)
+- Info messages (paycheck received, job info, duty status, etc.)
+- Command help text (all admin commands)
+- Character creation UI (first name, last name, nationality, etc.)
+- Queue system messages
+- Multicharacter UI
+
+See `locales/en.json` for the complete list of available translation keys.

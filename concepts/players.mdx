@@ -1,0 +1,257 @@
+---
+title: Player System
+description: Understanding the player data structure and management in Qbox Core
+icon: user
+---
+
+## Overview
+
+The player system in Qbox Core manages all player data, including character information, money, metadata, jobs, and gangs. Each player has a comprehensive data structure that persists across sessions.
+
+## Core Types
+
+### Player Object
+
+The main player object contains functions and data for managing player state.
+
+```lua types.lua
+---@class Player
+---@field Functions PlayerFunctions
+---@field PlayerData PlayerData
+---@field Offline boolean
+```
+
+### PlayerData
+
+Extends `PlayerEntity` with additional runtime data.
+
+```lua types.lua
+---@class PlayerData : PlayerEntity
+---@field jobs table<string, integer> -- Map of job names to grades
+---@field gangs table<string, integer> -- Map of gang names to grades
+---@field source? Source -- Present if player is online
+```
+
+### PlayerEntity
+
+The core data structure that persists to the database.
+
+```lua types.lua
+---@class PlayerEntity
+---@field userId? integer
+---@field citizenid string -- Unique identifier for this character
+---@field license string -- Player's FiveM license
+---@field name string -- Player display name
+---@field money Money -- Money accounts (cash, bank, etc.)
+---@field charinfo PlayerCharInfo -- Character information
+---@field job? PlayerJob -- Current active job
+---@field gang? PlayerGang -- Current active gang
+---@field position vector4 -- Last position
+---@field metadata PlayerMetadata -- Additional character data
+---@field cid integer -- Character ID (slot number)
+---@field lastLoggedOut integer -- Unix timestamp
+```
+
+## Character Information
+
+The `PlayerCharInfo` type stores basic character details.
+
+```lua types.lua
+---@class PlayerCharInfo
+---@field firstname string
+---@field lastname string
+---@field birthdate string
+---@field nationality string
+---@field cid integer
+---@field gender integer -- 0 or 1
+---@field backstory string
+---@field phone string
+---@field account string
+---@field card number -- Credit card number
+```
+
+## Player Metadata
+
+Metadata stores extensive character state information.
+
+```lua types.lua
+---@class PlayerMetadata
+---@field optin? boolean -- If opted in for admin duty
+---@field health number
+---@field armor number
+---@field hunger number
+---@field thirst number
+---@field stress number
+---@field isdead boolean
+---@field inlaststand boolean
+---@field ishandcuffed boolean
+---@field tracker boolean
+---@field injail number -- Time in minutes
+---@field bloodtype BloodType
+---@field callsign string
+---@field fingerprint string
+---@field walletid string
+---@field licences {id: boolean, driver: boolean, weapon: boolean}
+---@field criminalrecord {hasRecord: boolean, date?: table}
+---@field jobrep {tow: number, trucker: number, taxi: number, hotdog: number}
+```
+
+<Note>
+The metadata table can be extended with custom fields using `PlayerMetadata[string]`.
+</Note>
+
+## Player Functions
+
+### Getting Players
+
+```lua
+-- Get online player by source
+local player = exports.qbx_core:GetPlayer(source)
+
+-- Get player by citizen ID (online or offline)
+local player = exports.qbx_core:GetPlayerByCitizenId(citizenid)
+
+-- Get offline player data
+local player = exports.qbx_core:GetOfflinePlayer(citizenid)
+```
+
+### Managing Player Data
+
+```lua
+-- Update player data key
+exports.qbx_core:SetPlayerData(source, 'key', value)
+
+-- Update specific metadata field
+exports.qbx_core:SetMetadata(source, 'hunger', 75)
+
+-- Get metadata value
+local hunger = exports.qbx_core:GetMetadata(source, 'hunger')
+
+-- Update character info
+exports.qbx_core:SetCharInfo(source, 'phone', '555-1234')
+```
+
+### Managing Money
+
+```lua
+-- Add money
+local success = exports.qbx_core:AddMoney(source, 'cash', 1000, 'Paycheck')
+
+-- Remove money
+local success = exports.qbx_core:RemoveMoney(source, 'bank', 500, 'Purchase')
+
+-- Set money amount
+local success = exports.qbx_core:SetMoney(source, 'cash', 5000, 'Admin grant')
+
+-- Get money amount
+local amount = exports.qbx_core:GetMoney(source, 'bank')
+```
+
+<Warning>
+Money operations return `false` if the operation fails (e.g., insufficient funds when using `dontAllowMinus` accounts).
+</Warning>
+
+### Saving Player Data
+
+```lua
+-- Save online player
+exports.qbx_core:Save(source)
+
+-- Save offline player
+exports.qbx_core:SaveOffline(playerData)
+```
+
+## Login & Logout
+
+### Login Flow
+
+```lua server/player.lua
+-- Login with existing character
+local success = exports.qbx_core:Login(source, citizenid)
+
+-- Login with new character data
+local success = exports.qbx_core:Login(source, nil, newPlayerData)
+```
+
+### Logout
+
+```lua server/player.lua
+exports.qbx_core:Logout(source)
+```
+
+The logout function automatically:
+- Saves player data
+- Triggers `QBCore:Client:OnPlayerUnload` on client
+- Triggers `QBCore:Server:OnPlayerUnload` on server
+- Removes player from active players table
+- Updates global player count
+
+## Events
+
+### Server Events
+
+```lua
+-- Player loaded (after login)
+AddEventHandler('QBCore:Server:PlayerLoaded', function(player)
+    print('Player loaded:', player.PlayerData.citizenid)
+end)
+
+-- Player unloaded (before logout)
+AddEventHandler('QBCore:Server:OnPlayerUnload', function(source)
+    print('Player logging out:', source)
+end)
+
+-- Player data updated
+AddEventHandler('QBCore:Player:SetPlayerData', function(playerData)
+    print('Player data updated')
+end)
+```
+
+### Client Events
+
+```lua
+-- Player data received on client
+RegisterNetEvent('QBCore:Player:SetPlayerData', function(playerData)
+    -- Update client-side player data
+end)
+
+-- Player unloaded
+RegisterNetEvent('QBCore:Client:OnPlayerUnload', function()
+    -- Clean up client resources
+end)
+```
+
+## Player State
+
+Qbox uses FiveM's native state bags for certain values:
+
+```lua server/player.lua
+local playerState = Player(source).state
+
+-- These are synced via state bags
+playerState:set('hunger', value, true)
+playerState:set('thirst', value, true)
+playerState:set('stress', value, true)
+```
+
+## Example Usage
+
+```lua
+-- Get player and check job
+local player = exports.qbx_core:GetPlayer(source)
+if player.PlayerData.job.name == 'police' then
+    -- Give police equipment
+end
+
+-- Modify metadata
+exports.qbx_core:SetMetadata(source, 'hunger', 50)
+
+-- Add money with reason
+exports.qbx_core:AddMoney(source, 'bank', 5000, 'Mission reward')
+
+-- Check if player has enough money
+local cash = exports.qbx_core:GetMoney(source, 'cash')
+if cash >= 100 then
+    exports.qbx_core:RemoveMoney(source, 'cash', 100, 'Store purchase')
+end
+```

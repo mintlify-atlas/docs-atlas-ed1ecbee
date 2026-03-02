@@ -1,0 +1,224 @@
+---
+title: Vehicle Persistence
+description: Automatically save and restore vehicle state across server restarts
+---
+
+The vehicle persistence system allows player-owned vehicles to be automatically saved and respawned when deleted or when the server restarts. This ensures that vehicles persist across sessions with their damage, fuel, and customization intact.
+
+## Modes
+
+Vehicle persistence has two modes controlled by convars:
+
+### Semi Persistence (Default)
+
+Vehicles automatically respawn when deleted if they're marked as persisted. Does not automatically spawn vehicles on server start.
+
+```bash
+setr qbx:enableVehiclePersistence "true"
+setr qbx:vehiclePersistenceType "semi"
+```
+
+### Full Persistence
+
+Vehicles are saved to the database with their position and automatically spawned when players get near them after server restart.
+
+```bash
+setr qbx:enableVehiclePersistence "true"
+setr qbx:vehiclePersistenceType "full"
+```
+
+## Usage
+
+### Enabling Persistence
+
+Vehicles spawned using `qbx.spawnVehicle` are automatically persisted. To manually enable persistence on a vehicle:
+
+```lua
+-- Server-side
+exports.qbx_core:EnablePersistence(vehicle)
+```
+
+### Disabling Persistence
+
+To prevent a vehicle from respawning when deleted:
+
+```lua
+-- Server-side
+exports.qbx_core:DisablePersistence(vehicle)
+```
+
+## Tracked Properties
+
+The system automatically tracks and saves the following vehicle properties:
+
+### Health and Damage
+- **bodyHealth** - Body damage state (server/vehicle-persistence.lua:39)
+- **engineHealth** - Engine condition (server/vehicle-persistence.lua:42)
+- **tankHealth** - Fuel tank integrity (server/vehicle-persistence.lua:47)
+
+### Resources
+- **fuelLevel** - Current fuel amount (server/vehicle-persistence.lua:50)
+- **oilLevel** - Oil level (server/vehicle-persistence.lua:54)
+
+### Visual State
+- **dirtLevel** - Vehicle dirt/cleanliness (server/vehicle-persistence.lua:58)
+- **windows** - Broken windows state (server/vehicle-persistence.lua:62)
+- **doors** - Door damage state (server/vehicle-persistence.lua:66)
+- **tyres** - Tire burst/pop state (server/vehicle-persistence.lua:70)
+
+## How It Works
+
+### Semi Persistence
+
+When a persisted vehicle is deleted, the system:
+
+1. Captures the vehicle's current state (position, heading, occupants)
+2. Retrieves the vehicle's properties from the database
+3. Deletes the entity
+4. Spawns a new vehicle at the same location with the same properties
+5. Restores all passengers to their seats
+
+```lua
+-- From server/vehicle-persistence.lua:95
+AddEventHandler('entityRemoved', function(entity)
+    if not Entity(entity).state.persisted then return end
+    -- ... capture state and respawn vehicle
+end)
+```
+
+### Full Persistence
+
+With full persistence enabled:
+
+#### Saving
+
+Vehicles are saved to the database:
+- Every 10 seconds while the driver is in the vehicle (client/vehicle-persistence.lua:92)
+- When the driver exits the vehicle (client/vehicle-persistence.lua:96)
+- Before server shutdown (server/vehicle-persistence.lua:248)
+- Before scheduled restarts (server/vehicle-persistence.lua:254)
+
+```lua
+-- Automatic saving while driving
+lib.onCache('seat', function(newSeat)
+    if newSeat == -1 then
+        CreateThread(function()
+            while seat == -1 do
+                sendPropsDiff()  -- Saves changes every 10s
+                Wait(10000)
+            end
+        end)
+    end
+end)
+```
+
+#### Spawning
+
+On server start:
+1. All player vehicles are loaded from the database (server/vehicle-persistence.lua:237)
+2. Zones are created at each vehicle's last known position (client/vehicle-persistence.lua:73)
+3. When a player enters a zone (within 75m), the vehicle spawns (client/vehicle-persistence.lua:77)
+4. The zone is removed after spawning (server/vehicle-persistence.lua:218)
+
+```lua
+-- Client creates proximity zones for vehicles
+local function createVehicleZones(vehicles)
+    for id, coords in pairs(vehicles) do
+        zones[id] = lib.points.new({
+            distance = 75.0,
+            coords = coords,
+            onEnter = function()
+                TriggerServerEvent('qbx_core:server:spawnVehicle', id, coords)
+            end
+        })
+    end
+end
+```
+
+## Requirements
+
+Vehicle persistence requires:
+- `qbx_vehicles` version 1.4.1 or higher (server/vehicle-persistence.lua:23)
+- Proper database setup with vehicle storage tables
+
+## Configuration
+
+Configure vehicle lock state on spawn in `config/server.lua`:
+
+```lua
+config.persistence = {
+    lockState = 2  -- Lock state for spawned vehicles (0 = unlocked, 2 = locked)
+}
+```
+
+## Performance Considerations
+
+### Queue System
+
+Full persistence uses a spawn queue to prevent server lag when spawning multiple vehicles:
+
+```lua
+-- Processes one vehicle at a time
+while #vehicleSpawnQueue > 0 do
+    local request = table.remove(vehicleSpawnQueue, 1)
+    -- spawn vehicle...
+end
+```
+
+### Duplicate Prevention
+
+Before spawning, the system checks if a vehicle is already spawned to prevent duplicates (server/vehicle-persistence.lua:138).
+
+## Events
+
+### qbx_core:server:vehiclePropsChanged
+
+Triggered when vehicle properties change.
+
+```lua
+RegisterNetEvent('qbx_core:server:vehiclePropsChanged', function(netId, diff)
+    -- diff contains only the changed properties
+    -- Updates database with new values
+end)
+```
+
+### qbx_core:server:vehiclePositionChanged
+
+Triggered in full persistence mode to save vehicle position.
+
+```lua
+RegisterNetEvent('qbx_core:server:vehiclePositionChanged', function(netId)
+    -- Saves current vehicle position to database
+end)
+```
+
+### qbx_core:client:removeVehZone
+
+Removes a vehicle's proximity zone after spawning.
+
+```lua
+RegisterNetEvent('qbx_core:client:removeVehZone', function(id)
+    zones[id]:remove()
+    zones[id] = nil
+end)
+```
+
+## Example
+
+```lua
+-- Spawn a persistent vehicle
+local coords = GetEntityCoords(PlayerPedId())
+local heading = GetEntityHeading(PlayerPedId())
+
+local _, vehicle = qbx.spawnVehicle({
+    model = 'adder',
+    spawnSource = vec4(coords.x, coords.y, coords.z, heading)
+})
+
+-- Vehicle is automatically persisted
+-- It will respawn if deleted (semi mode)
+-- It will spawn near its last position on restart (full mode)
+
+-- To disable persistence
+exports.qbx_core:DisablePersistence(vehicle)
+```

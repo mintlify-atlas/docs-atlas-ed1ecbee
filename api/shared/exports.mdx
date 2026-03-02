@@ -1,0 +1,1502 @@
+---
+title: Exports Reference
+description: Complete reference of all Qbox Core exports
+---
+
+## Overview
+
+Qbox Core provides a comprehensive set of exports for managing players, jobs, gangs, vehicles, and more. Exports are available on both client and server contexts.
+
+## Hooks
+
+### registerHook
+
+Registers a callback function to be triggered by a resource event. Returning `false` from the callback cancels the event.
+
+**Context:** Client & Server
+
+```lua
+local hookId = exports.qbx_core:registerHook(event, callback)
+```
+
+#### Parameters
+
+- `event` (string) - The event name to hook into
+- `callback` (function) - The function to execute. Return `false` to cancel the event
+
+#### Returns
+
+- `integer` - Hook ID for later removal
+
+#### Example
+
+```lua
+local hookId = exports.qbx_core:registerHook('onPlayerLogin', function(playerData)
+    print(('Player %s logged in'):format(playerData.citizenid))
+    -- Return false to cancel the login
+    return true
+end)
+```
+
+#### Performance
+
+- Hooks taking longer than 100ms will generate a warning
+- Keep hook logic lightweight for best performance
+
+---
+
+### removeHooks
+
+Removes a previously registered hook by its ID.
+
+**Context:** Client & Server
+
+```lua
+exports.qbx_core:removeHooks(hookId)
+```
+
+#### Parameters
+
+- `hookId` (number) - The hook ID returned by `registerHook`
+
+#### Example
+
+```lua
+local hookId = exports.qbx_core:registerHook('onPlayerLogin', callback)
+
+-- Later, remove the hook
+exports.qbx_core:removeHooks(hookId)
+```
+
+---
+
+## Player Management
+
+### GetPlayer
+
+Gets a player object by source or identifier.
+
+**Context:** Server
+
+```lua
+local player = exports.qbx_core:GetPlayer(source)
+```
+
+#### Parameters
+
+- `source` (Source | string) - Player source ID or identifier
+
+#### Returns
+
+- `Player` - Player object
+
+---
+
+### GetPlayerByCitizenId
+
+Gets a player object by their citizenid.
+
+**Context:** Server
+
+```lua
+local player = exports.qbx_core:GetPlayerByCitizenId(citizenid)
+```
+
+#### Parameters
+
+- `citizenid` (string) - The player's citizenid
+
+#### Returns
+
+- `Player?` - Player object or nil if not found
+
+---
+
+### GetPlayerByUserId
+
+Gets a player object by their user ID.
+
+**Context:** Server
+
+```lua
+local player = exports.qbx_core:GetPlayerByUserId(userId)
+```
+
+#### Parameters
+
+- `userId` (string) - The player's user ID
+
+#### Returns
+
+- `Player?` - Player object or nil if not found
+
+---
+
+### GetPlayerByPhone
+
+Gets a player object by their phone number.
+
+**Context:** Server
+
+```lua
+local player = exports.qbx_core:GetPlayerByPhone(phoneNumber)
+```
+
+#### Parameters
+
+- `phoneNumber` (string) - The player's phone number
+
+#### Returns
+
+- `Player?` - Player object or nil if not found
+
+---
+
+### GetOfflinePlayer
+
+Gets an offline player's data from storage.
+
+**Context:** Server
+
+```lua
+local player = exports.qbx_core:GetOfflinePlayer(citizenid)
+```
+
+#### Parameters
+
+- `citizenid` (string) - The player's citizenid
+
+#### Returns
+
+- `Player?` - Player object or nil if not found in storage
+
+---
+
+### GetQBPlayers
+
+Returns all currently online players as Player class instances.
+
+**Context:** Server
+
+```lua
+local players = exports.qbx_core:GetQBPlayers()
+```
+
+#### Returns
+
+- `table&lt;Source, Player>` - Map of source IDs to Player objects
+
+#### Example
+
+```lua
+local players = exports.qbx_core:GetQBPlayers()
+for source, player in pairs(players) do
+    print(('Player %s is online'):format(player.PlayerData.citizenid))
+end
+```
+
+---
+
+### GetPlayerData
+
+Gets the local player's data.
+
+**Context:** Client
+
+```lua
+local playerData = exports.qbx_core:GetPlayerData()
+```
+
+#### Returns
+
+- `PlayerData?` - The local player's data
+
+---
+
+### Login
+
+Logs a player into the server.
+
+**Context:** Server
+
+```lua
+local success = exports.qbx_core:Login(source, citizenid, newData)
+```
+
+#### Parameters
+
+- `source` (Source) - Player source ID
+- `citizenid` (string) - Optional. The character's citizenid
+- `newData` (PlayerEntity) - Optional. New player data
+
+#### Returns
+
+- `boolean` - True if login was successful
+
+---
+
+### Logout
+
+Logs a player out of the server.
+
+**Context:** Server
+
+```lua
+exports.qbx_core:Logout(source)
+```
+
+#### Parameters
+
+- `source` (Source) - Player source ID
+
+---
+
+### CreatePlayer
+
+Creates a new player character.
+
+**Context:** Server
+
+```lua
+local player = exports.qbx_core:CreatePlayer(source, citizenid, playerData)
+```
+
+---
+
+### Save
+
+Saves a player's data to the database.
+
+**Context:** Server
+
+```lua
+exports.qbx_core:Save(source)
+```
+
+#### Parameters
+
+- `source` (Source) - Player source ID
+
+---
+
+### SaveOffline
+
+Saves an offline player's data to the database.
+
+**Context:** Server
+
+```lua
+exports.qbx_core:SaveOffline(citizenid)
+```
+
+#### Parameters
+
+- `citizenid` (string) - The player's citizenid
+
+---
+
+### DeleteCharacter
+
+Deletes a player character.
+
+**Context:** Server
+
+```lua
+exports.qbx_core:DeleteCharacter(citizenid)
+```
+
+#### Parameters
+
+- `citizenid` (string) - The character's citizenid to delete
+
+---
+
+## Player Data Management
+
+### SetPlayerData
+
+Sets a player's data.
+
+**Context:** Server
+
+```lua
+exports.qbx_core:SetPlayerData(source, playerData)
+```
+
+---
+
+### UpdatePlayerData
+
+Updates a player's data.
+
+**Context:** Server
+
+```lua
+exports.qbx_core:UpdatePlayerData(source)
+```
+
+---
+
+### SetMetadata
+
+Sets player metadata.
+
+**Context:** Server
+
+```lua
+exports.qbx_core:SetMetadata(source, key, value)
+```
+
+---
+
+### GetMetadata
+
+Gets player metadata.
+
+**Context:** Server
+
+```lua
+local value = exports.qbx_core:GetMetadata(source, key)
+```
+
+---
+
+### SetCharInfo
+
+Sets player character information.
+
+**Context:** Server
+
+```lua
+exports.qbx_core:SetCharInfo(source, key, value)
+```
+
+---
+
+## Money Management
+
+### AddMoney
+
+Adds money to a player's account.
+
+**Context:** Server
+
+```lua
+local success = exports.qbx_core:AddMoney(source, account, amount, reason)
+```
+
+#### Parameters
+
+- `source` (Source) - Player source ID
+- `account` (string) - Account type (e.g., 'cash', 'bank')
+- `amount` (number) - Amount to add
+- `reason` (string) - Optional. Reason for the transaction
+
+#### Returns
+
+- `boolean` - True if successful
+
+---
+
+### RemoveMoney
+
+Removes money from a player's account.
+
+**Context:** Server
+
+```lua
+local success = exports.qbx_core:RemoveMoney(source, account, amount, reason)
+```
+
+#### Parameters
+
+- `source` (Source) - Player source ID
+- `account` (string) - Account type
+- `amount` (number) - Amount to remove
+- `reason` (string) - Optional. Reason for the transaction
+
+#### Returns
+
+- `boolean` - True if successful
+
+---
+
+### SetMoney
+
+Sets a player's money to a specific amount.
+
+**Context:** Server
+
+```lua
+exports.qbx_core:SetMoney(source, account, amount, reason)
+```
+
+---
+
+### GetMoney
+
+Gets the amount of money in a player's account.
+
+**Context:** Server
+
+```lua
+local amount = exports.qbx_core:GetMoney(source, account)
+```
+
+---
+
+## Jobs Management
+
+### SetJob
+
+Sets a player's primary job, removing them from their current job.
+
+**Context:** Server
+
+```lua
+local success, errorResult = exports.qbx_core:SetJob(identifier, jobName, grade)
+```
+
+#### Parameters
+
+- `identifier` (Source | string) - Player source or citizenid
+- `jobName` (string) - Job name (must be lowercase)
+- `grade` (integer) - Optional. Job grade, defaults to 0
+
+#### Returns
+
+- `boolean` - Success status
+- `ErrorResult?` - Error details if failed
+
+#### Example
+
+```lua
+local success, err = exports.qbx_core:SetJob(source, 'police', 2)
+if not success then
+    print('Failed to set job:', err.message)
+end
+```
+
+---
+
+### SetJobDuty
+
+Sets a player's job duty status.
+
+**Context:** Server
+
+```lua
+exports.qbx_core:SetJobDuty(identifier, onDuty)
+```
+
+#### Parameters
+
+- `identifier` (Source | string) - Player source or citizenid
+- `onDuty` (boolean) - Duty status
+
+---
+
+### SetPlayerPrimaryJob
+
+Sets a player's job to be their primary job (must already have the job).
+
+**Context:** Server
+
+```lua
+local success, errorResult = exports.qbx_core:SetPlayerPrimaryJob(citizenid, jobName)
+```
+
+#### Parameters
+
+- `citizenid` (string) - The player's citizenid
+- `jobName` (string) - Job name
+
+#### Returns
+
+- `boolean` - Success status
+- `ErrorResult?` - Error details if failed
+
+---
+
+### AddPlayerToJob
+
+Adds a job to a player without changing their primary job.
+
+**Context:** Server
+
+```lua
+local success, errorResult = exports.qbx_core:AddPlayerToJob(citizenid, jobName, grade)
+```
+
+#### Parameters
+
+- `citizenid` (string) - The player's citizenid
+- `jobName` (string) - Job name
+- `grade` (integer) - Job grade
+
+#### Returns
+
+- `boolean` - Success status
+- `ErrorResult?` - Error details if failed
+
+---
+
+### RemovePlayerFromJob
+
+Removes a player from a specific job.
+
+**Context:** Server
+
+```lua
+local success, errorResult = exports.qbx_core:RemovePlayerFromJob(citizenid, jobName)
+```
+
+---
+
+### GetJob
+
+Gets a job configuration by name.
+
+**Context:** Client & Server
+
+```lua
+local job = exports.qbx_core:GetJob(jobName)
+```
+
+#### Parameters
+
+- `jobName` (string) - Job name
+
+#### Returns
+
+- `Job?` - Job configuration or nil
+
+---
+
+### GetJobs
+
+Gets all jobs.
+
+**Context:** Client & Server
+
+```lua
+local jobs = exports.qbx_core:GetJobs()
+```
+
+#### Returns
+
+- `table&lt;string, Job>` - Map of all jobs
+
+---
+
+### CreateJob
+
+Creates a new job dynamically.
+
+**Context:** Server
+
+```lua
+local success = exports.qbx_core:CreateJob(jobData)
+```
+
+---
+
+### CreateJobs
+
+Creates multiple jobs at once.
+
+**Context:** Server
+
+```lua
+exports.qbx_core:CreateJobs(jobsTable)
+```
+
+---
+
+### RemoveJob
+
+Removes a job from the system.
+
+**Context:** Server
+
+```lua
+exports.qbx_core:RemoveJob(jobName)
+```
+
+---
+
+### UpsertJobData
+
+Updates or inserts job data.
+
+**Context:** Server
+
+```lua
+exports.qbx_core:UpsertJobData(jobName, jobData)
+```
+
+---
+
+### UpsertJobGrade
+
+Updates or inserts a job grade.
+
+**Context:** Server
+
+```lua
+exports.qbx_core:UpsertJobGrade(jobName, grade, gradeData)
+```
+
+---
+
+### RemoveJobGrade
+
+Removes a grade from a job.
+
+**Context:** Server
+
+```lua
+exports.qbx_core:RemoveJobGrade(jobName, grade)
+```
+
+---
+
+### GetDutyCountJob
+
+Gets the count and list of players on duty for a specific job.
+
+**Context:** Server
+
+```lua
+local count, players = exports.qbx_core:GetDutyCountJob(jobName)
+```
+
+#### Parameters
+
+- `jobName` (string) - Job name
+
+#### Returns
+
+- `integer` - Count of on-duty players
+- `Source[]` - Array of player sources
+
+---
+
+### GetDutyCountType
+
+Gets the count and list of players on duty for a specific job type.
+
+**Context:** Server
+
+```lua
+local count, players = exports.qbx_core:GetDutyCountType(jobType)
+```
+
+#### Parameters
+
+- `jobType` (string) - Job type (e.g., 'leo')
+
+#### Returns
+
+- `integer` - Count of on-duty players
+- `Source[]` - Array of player sources
+
+---
+
+## Gangs Management
+
+### SetGang
+
+Sets a player's primary gang.
+
+**Context:** Server
+
+```lua
+local success, errorResult = exports.qbx_core:SetGang(identifier, gangName, grade)
+```
+
+#### Parameters
+
+- `identifier` (Source | string) - Player source or citizenid
+- `gangName` (string) - Gang name
+- `grade` (integer) - Optional. Gang grade, defaults to 0
+
+#### Returns
+
+- `boolean` - Success status
+- `ErrorResult?` - Error details if failed
+
+---
+
+### SetPlayerPrimaryGang
+
+Sets a player's gang to be their primary gang.
+
+**Context:** Server
+
+```lua
+local success, errorResult = exports.qbx_core:SetPlayerPrimaryGang(citizenid, gangName)
+```
+
+---
+
+### AddPlayerToGang
+
+Adds a gang to a player.
+
+**Context:** Server
+
+```lua
+local success, errorResult = exports.qbx_core:AddPlayerToGang(citizenid, gangName, grade)
+```
+
+---
+
+### RemovePlayerFromGang
+
+Removes a player from a gang.
+
+**Context:** Server
+
+```lua
+local success, errorResult = exports.qbx_core:RemovePlayerFromGang(citizenid, gangName)
+```
+
+---
+
+### GetGang
+
+Gets a gang configuration by name.
+
+**Context:** Client & Server
+
+```lua
+local gang = exports.qbx_core:GetGang(gangName)
+```
+
+---
+
+### GetGangs
+
+Gets all gangs.
+
+**Context:** Client & Server
+
+```lua
+local gangs = exports.qbx_core:GetGangs()
+```
+
+#### Returns
+
+- `table&lt;string, Gang>` - Map of all gangs
+
+---
+
+### CreateGangs
+
+Creates multiple gangs at once.
+
+**Context:** Server
+
+```lua
+exports.qbx_core:CreateGangs(gangsTable)
+```
+
+---
+
+### RemoveGang
+
+Removes a gang from the system.
+
+**Context:** Server
+
+```lua
+exports.qbx_core:RemoveGang(gangName)
+```
+
+---
+
+### UpsertGangData
+
+Updates or inserts gang data.
+
+**Context:** Server
+
+```lua
+exports.qbx_core:UpsertGangData(gangName, gangData)
+```
+
+---
+
+### UpsertGangGrade
+
+Updates or inserts a gang grade.
+
+**Context:** Server
+
+```lua
+exports.qbx_core:UpsertGangGrade(gangName, grade, gradeData)
+```
+
+---
+
+### RemoveGangGrade
+
+Removes a grade from a gang.
+
+**Context:** Server
+
+```lua
+exports.qbx_core:RemoveGangGrade(gangName, grade)
+```
+
+---
+
+## Group Checking
+
+### HasPrimaryGroup
+
+Checks if the local player has a specific primary job or gang.
+
+**Context:** Client
+
+```lua
+local hasGroup = exports.qbx_core:HasPrimaryGroup(filter)
+```
+
+#### Parameters
+
+- `filter` (string | string[] | table&lt;string, number>) - Group filter
+
+#### Returns
+
+- `boolean` - True if player has the primary group
+
+---
+
+### HasGroup
+
+Checks if the local player has a specific job, gang, or group.
+
+**Context:** Client & Server
+
+```lua
+local hasGroup = exports.qbx_core:HasGroup(filter)
+```
+
+#### Parameters
+
+- `filter` (string | string[] | table&lt;string, number>) - Group filter
+
+#### Returns
+
+- `boolean` - True if player has any matching group
+
+#### Example
+
+```lua
+-- Check single job
+if exports.qbx_core:HasGroup('police') then
+    print('Player is police')
+end
+
+-- Check multiple jobs
+if exports.qbx_core:HasGroup({'police', 'ambulance'}) then
+    print('Player is emergency services')
+end
+
+-- Check with minimum grade
+if exports.qbx_core:HasGroup({police = 3}) then
+    print('Player is police lieutenant or higher')
+end
+```
+
+---
+
+### GetGroups
+
+Gets all groups (jobs and gangs) for the local player.
+
+**Context:** Client
+
+```lua
+local groups = exports.qbx_core:GetGroups()
+```
+
+#### Returns
+
+- `table&lt;string, integer>` - Map of group names to grades
+
+---
+
+### GetGroupMembers
+
+Gets all members of a specific group.
+
+**Context:** Server
+
+```lua
+local members = exports.qbx_core:GetGroupMembers(groupName)
+```
+
+---
+
+### IsGradeBoss
+
+Checks if a grade has boss permissions.
+
+**Context:** Server
+
+```lua
+local isBoss = exports.qbx_core:IsGradeBoss(jobName, grade)
+```
+
+---
+
+## Vehicles
+
+### GetVehiclesByName
+
+Gets vehicle data by spawn name.
+
+**Context:** Client & Server
+
+```lua
+local vehicle = exports.qbx_core:GetVehiclesByName('adder')
+local allVehicles = exports.qbx_core:GetVehiclesByName()
+```
+
+#### Parameters
+
+- `key` (string) - Optional. Vehicle spawn name
+
+#### Returns
+
+- `Vehicle` - Single vehicle if key provided
+- `table&lt;string, Vehicle>` - All vehicles if no key
+
+---
+
+### GetVehiclesByHash
+
+Gets vehicle data by model hash.
+
+**Context:** Client & Server
+
+```lua
+local vehicle = exports.qbx_core:GetVehiclesByHash(hashKey)
+local allVehicles = exports.qbx_core:GetVehiclesByHash()
+```
+
+#### Returns
+
+- `Vehicle` - Single vehicle if key provided
+- `table&lt;number, Vehicle>` - All vehicles if no key
+
+---
+
+### GetVehiclesByCategory
+
+Gets vehicles grouped by category.
+
+**Context:** Client & Server
+
+```lua
+local categories = exports.qbx_core:GetVehiclesByCategory()
+```
+
+#### Returns
+
+- `table&lt;string, Vehicle[]>` - Vehicles grouped by category
+
+---
+
+### GetVehicleClass
+
+Gets the vehicle class for a model.
+
+**Context:** Server
+
+```lua
+local class = exports.qbx_core:GetVehicleClass(modelHash)
+```
+
+#### Parameters
+
+- `modelHash` (number) - The vehicle model hash
+
+#### Returns
+
+- `VehicleClass` - The vehicle class ID
+
+---
+
+### DeleteVehicle
+
+Deletes a vehicle entity.
+
+**Context:** Server
+
+```lua
+exports.qbx_core:DeleteVehicle(vehicle)
+```
+
+---
+
+### EnablePersistence
+
+Enables vehicle persistence.
+
+**Context:** Server
+
+```lua
+exports.qbx_core:EnablePersistence(vehicle)
+```
+
+---
+
+### DisablePersistence
+
+Disables vehicle persistence.
+
+**Context:** Server
+
+```lua
+exports.qbx_core:DisablePersistence(vehicle)
+```
+
+---
+
+## Weapons
+
+### GetWeapons
+
+Gets weapon data.
+
+**Context:** Client & Server
+
+```lua
+local weapon = exports.qbx_core:GetWeapons(weaponHash)
+local allWeapons = exports.qbx_core:GetWeapons()
+```
+
+#### Parameters
+
+- `key` (number) - Optional. Weapon hash
+
+#### Returns
+
+- `Weapon` - Single weapon if key provided
+- `table&lt;number, Weapon>` - All weapons if no key
+
+---
+
+## Items
+
+### CreateUseableItem
+
+Registers an item as useable with a callback.
+
+**Context:** Server
+
+```lua
+exports.qbx_core:CreateUseableItem(itemName, callback)
+```
+
+#### Parameters
+
+- `itemName` (string) - The item name
+- `callback` (function) - Function called when item is used: `function(source, item)`
+
+#### Example
+
+```lua
+exports.qbx_core:CreateUseableItem('sandwich', function(source, item)
+    local player = exports.qbx_core:GetPlayer(source)
+    -- Add health, remove item, etc.
+end)
+```
+
+---
+
+### CanUseItem
+
+Checks if an item has a use callback registered.
+
+**Context:** Server
+
+```lua
+local canUse = exports.qbx_core:CanUseItem(itemName)
+```
+
+---
+
+## Notifications
+
+### Notify
+
+Displays a notification to the player.
+
+**Context:** Client & Server
+
+```lua
+exports.qbx_core:Notify(text, notifyType, duration, subTitle, notifyPosition, notifyStyle, notifyIcon, notifyIconColor)
+```
+
+#### Parameters
+
+- `text` (string | table) - Notification text or table with `text` and `caption`
+- `notifyType` (NotificationType) - Optional. Type: 'inform', 'success', 'error', 'warning'
+- `duration` (integer) - Optional. Duration in milliseconds (default: 5000)
+- `subTitle` (string) - Optional. Subtitle text
+- `notifyPosition` (NotificationPosition) - Optional. Position on screen
+- `notifyStyle` (table) - Optional. Custom styling
+- `notifyIcon` (string) - Optional. Font Awesome 6 icon name
+- `notifyIconColor` (string) - Optional. Icon color
+
+#### Example
+
+```lua
+-- Simple notification
+exports.qbx_core:Notify('Hello world!', 'success')
+
+-- With subtitle
+exports.qbx_core:Notify('Payment received', 'success', 5000, '$500 added to bank')
+
+-- With table
+exports.qbx_core:Notify({
+    text = 'Warning',
+    caption = 'Low health detected'
+}, 'warning')
+```
+
+---
+
+## Routing Buckets
+
+### GetBucketObjects
+
+Gets the bucket tracking objects.
+
+**Context:** Server
+
+```lua
+local playerBuckets, entityBuckets = exports.qbx_core:GetBucketObjects()
+```
+
+#### Returns
+
+- `table` - Player buckets map
+- `table` - Entity buckets map
+
+---
+
+### SetPlayerBucket
+
+Sets a player's routing bucket.
+
+**Context:** Server
+
+```lua
+local success = exports.qbx_core:SetPlayerBucket(source, bucketId)
+```
+
+#### Parameters
+
+- `source` (Source) - Player source ID
+- `bucketId` (integer) - Bucket ID
+
+#### Returns
+
+- `boolean` - True if successful
+
+---
+
+### SetEntityBucket
+
+Sets an entity's routing bucket.
+
+**Context:** Server
+
+```lua
+local success = exports.qbx_core:SetEntityBucket(entity, bucketId)
+```
+
+#### Parameters
+
+- `entity` (integer) - Entity handle
+- `bucketId` (integer) - Bucket ID
+
+#### Returns
+
+- `boolean` - True if successful
+
+---
+
+### GetPlayersInBucket
+
+Gets all players in a specific bucket.
+
+**Context:** Server
+
+```lua
+local players = exports.qbx_core:GetPlayersInBucket(bucketId)
+```
+
+#### Parameters
+
+- `bucketId` (integer) - Bucket ID
+
+#### Returns
+
+- `Source[]` - Array of player sources
+- `boolean` - False if no buckets exist
+
+---
+
+### GetEntitiesInBucket
+
+Gets all entities in a specific bucket.
+
+**Context:** Server
+
+```lua
+local entities = exports.qbx_core:GetEntitiesInBucket(bucketId)
+```
+
+#### Parameters
+
+- `bucketId` (integer) - Bucket ID
+
+#### Returns
+
+- `integer[]` - Array of entity handles
+- `boolean` - False if no buckets exist
+
+---
+
+## Permissions
+
+### IsWhitelisted
+
+Checks if a player is whitelisted.
+
+**Context:** Server
+
+```lua
+local isWhitelisted = exports.qbx_core:IsWhitelisted(source)
+```
+
+#### Returns
+
+- `boolean` - True if whitelisted or whitelist is disabled
+
+---
+
+### AddPermission
+
+**Deprecated:** Use server.cfg ACEs instead.
+
+**Context:** Server
+
+```lua
+exports.qbx_core:AddPermission(source, permission)
+```
+
+---
+
+### RemovePermission
+
+**Deprecated:** Use server.cfg ACEs instead.
+
+**Context:** Server
+
+```lua
+exports.qbx_core:RemovePermission(source, permission)
+```
+
+---
+
+### HasPermission
+
+**Deprecated:** Use `IsPlayerAceAllowed` instead.
+
+**Context:** Server
+
+```lua
+local hasPerm = exports.qbx_core:HasPermission(source, permission)
+```
+
+---
+
+### GetPermission
+
+**Deprecated:** Use server.cfg ACEs instead.
+
+**Context:** Server
+
+```lua
+local perms = exports.qbx_core:GetPermission(source)
+```
+
+---
+
+### IsOptin
+
+Checks if a player has opted into admin reports.
+
+**Context:** Server
+
+```lua
+local isOptin = exports.qbx_core:IsOptin(source)
+```
+
+---
+
+### ToggleOptin
+
+Toggles a player's opt-in status for admin reports.
+
+**Context:** Server
+
+```lua
+exports.qbx_core:ToggleOptin(source)
+```
+
+---
+
+## Utilities
+
+### GetSource
+
+Gets a player's source by identifier.
+
+**Context:** Server
+
+```lua
+local source = exports.qbx_core:GetSource(identifier)
+```
+
+#### Parameters
+
+- `identifier` (Identifier) - Steam, license, discord, etc.
+
+#### Returns
+
+- `integer` - Player source or 0 if not found
+
+---
+
+### GetUserId
+
+Gets a player's user ID by identifier.
+
+**Context:** Server
+
+```lua
+local userId = exports.qbx_core:GetUserId(identifier)
+```
+
+---
+
+### CreateSessionId
+
+Creates a unique session ID for an entity.
+
+**Context:** Server
+
+```lua
+local sessionId = exports.qbx_core:CreateSessionId(entity)
+```
+
+#### Parameters
+
+- `entity` (number) - Entity handle
+
+#### Returns
+
+- `integer` - Unique session ID
+
+---
+
+### GenerateUniqueIdentifier
+
+Generates a unique citizenid.
+
+**Context:** Server
+
+```lua
+local citizenid = exports.qbx_core:GenerateUniqueIdentifier()
+```
+
+---
+
+### IsPlayerBanned
+
+Checks if a player is banned.
+
+**Context:** Server
+
+```lua
+local isBanned = exports.qbx_core:IsPlayerBanned(source)
+```
+
+---
+
+### ExploitBan
+
+Bans a player for exploiting.
+
+**Context:** Server
+
+```lua
+exports.qbx_core:ExploitBan(source, reason)
+```
+
+---
+
+### GetCoreVersion
+
+Gets the core version.
+
+**Context:** Server
+
+```lua
+local version = exports.qbx_core:GetCoreVersion()
+```
+
+---
+
+### GetLocations
+
+**Deprecated:** Legacy location data.
+
+**Context:** Client & Server
+
+```lua
+local locations = exports.qbx_core:GetLocations()
+```
+
+---
+
+### GetPlayersData
+
+Gets data for multiple players.
+
+**Context:** Server
+
+```lua
+local playersData = exports.qbx_core:GetPlayersData()
+```
+
+---
+
+### SearchPlayers
+
+Searches for players by criteria.
+
+**Context:** Server
+
+```lua
+local results = exports.qbx_core:SearchPlayers(searchCriteria)
+```

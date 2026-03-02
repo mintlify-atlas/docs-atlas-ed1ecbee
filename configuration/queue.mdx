@@ -1,0 +1,290 @@
+---
+title: Queue Configuration
+description: Configure the Qbox queue system including priority sub-queues, timeouts, and adaptive card display
+---
+
+The queue configuration file (`config/queue.lua`) manages the server queue system, allowing you to create priority queues and customize the connection experience.
+
+## Timeout Settings
+
+<ParamField path="timeoutSeconds" type="number" default="30">
+  Amount of seconds to wait before removing a player from the queue after disconnecting while waiting.
+  
+  This prevents players from holding queue positions indefinitely if they disconnect.
+</ParamField>
+
+<ParamField path="joiningTimeoutSeconds" type="number" default="0">
+  Amount of seconds to wait before removing a player from the queue after disconnecting while installing server data.
+  
+  <Note>
+    An additional ~2 minutes will be waited due to limitations with how FiveM handles joining players.
+  </Note>
+</ParamField>
+
+## Sub-Queue System
+
+Sub-queues allow you to create priority tiers in your queue. Players are sorted by sub-queue priority first, then by join time within each sub-queue.
+
+<ParamField path="subQueues" type="SubQueueConfig[]">
+  Sub-queues from most to least prioritized.
+  
+  **Important Rules:**
+  - Sub-queues are checked in order from first to last
+  - The first sub-queue without a `predicate` function is the default queue
+  - If a player doesn't pass any predicate AND no default queue exists, they cannot join unless a slot is available
+  
+  **SubQueueConfig Type:**
+  ```lua
+  ---@class SubQueueConfig
+  ---@field name string
+  ---@field predicate? fun(source: Source): boolean
+  ---@field cardOptions? AdaptiveCardTextOptions
+  ```
+  
+  **Default Configuration:**
+  ```lua
+  subQueues = {
+      { 
+          name = 'Admin Queue', 
+          predicate = function(source) 
+              return IsPlayerAceAllowed(source, 'admin') 
+          end, 
+          cardOptions = { color = 'good' } 
+      },
+      { name = 'Regular Queue' }, -- Default queue (no predicate)
+  }
+  ```
+</ParamField>
+
+### Sub-Queue Examples
+
+<CodeGroup>
+```lua Priority Donor Queue
+subQueues = {
+    { 
+        name = 'Staff Queue',
+        predicate = function(source)
+            return IsPlayerAceAllowed(source, 'admin')
+        end,
+        cardOptions = { color = 'good', weight = 'bolder' }
+    },
+    { 
+        name = 'VIP Queue',
+        predicate = function(source)
+            return IsPlayerAceAllowed(source, 'vip')
+        end,
+        cardOptions = { color = 'accent' }
+    },
+    { name = 'Regular Queue' }
+}
+```
+
+```lua Whitelist Queue
+subQueues = {
+    { 
+        name = 'Whitelisted Players',
+        predicate = function(source)
+            -- Check if player is whitelisted in database
+            local license = GetPlayerIdentifierByType(source, 'license')
+            return IsWhitelisted(license)
+        end,
+        cardOptions = { color = 'good' }
+    }
+    -- No default queue - non-whitelisted players cannot join when full
+}
+```
+</CodeGroup>
+
+### Adaptive Card Text Options
+
+<ParamField path="cardOptions" type="AdaptiveCardTextOptions">
+  Customize the appearance of text in the adaptive card for each sub-queue.
+  
+  **Available Options:**
+  
+  | Option | Type | Values |
+  |--------|------|--------|
+  | `style` | string | `'default'`, `'heading'`, `'columnHeader'` |
+  | `fontType` | string | `'default'`, `'monospace'` |
+  | `size` | string | `'small'`, `'default'`, `'medium'`, `'large'`, `'extralarge'` |
+  | `weight` | string | `'lighter'`, `'default'`, `'bolder'` |
+  | `color` | string | `'default'`, `'dark'`, `'light'`, `'accent'`, `'good'`, `'warning'`, `'attention'` |
+  | `isSubtle` | boolean | `true`, `false` |
+  
+  **Example:**
+  ```lua
+  cardOptions = {
+      color = 'good',
+      size = 'large',
+      weight = 'bolder'
+  }
+  ```
+</ParamField>
+
+## Visual Customization
+
+<ParamField path="waitingEmojis" type="string[]">
+  Cosmetic emojis shown along with the elapsed queue time. These cycle to indicate activity.
+  
+  **Default:**
+  ```lua
+  waitingEmojis = {
+      '🕛',
+      '🕒',
+      '🕕',
+      '🕘',
+  }
+  ```
+  
+  You can customize these with any emojis:
+  ```lua
+  waitingEmojis = {
+      '⏳',
+      '⌛',
+      '⏰',
+      '⏱️',
+  }
+  ```
+</ParamField>
+
+<ParamField path="useAdaptiveCard" type="boolean" default="true">
+  Whether to use the adaptive card generator defined in this config.
+  
+  Set to `false` to use a simpler text-based queue display.
+</ParamField>
+
+## Custom Adaptive Card
+
+The adaptive card is the visual interface players see while in the queue.
+
+<ParamField path="generateCard" type="function">
+  Generator function for the adaptive card display.
+  
+  **Parameters (GenerateCardParams):**
+  - `subQueue` (SubQueue) - The sub-queue the player is in
+  - `globalPos` (integer) - Player's position in the entire queue
+  - `totalQueueSize` (integer) - Total number of players in queue
+  - `displayTime` (string) - Formatted time string showing how long player has been waiting
+  
+  **Returns:** `table` - Adaptive card JSON structure
+  
+  **Default Implementation:**
+  
+  The default card shows:
+  - "In Line" header
+  - "Joining [ServerName]" subheader
+  - Visual progress indicator (Queue • • You • • • Server)
+  - Sub-queue name, position (X/Y), and wait time
+  
+  <Accordion title="View Default Implementation">
+    ```lua
+    generateCard = function(params)
+        local subQueue = params.subQueue
+        local pos = params.globalPos
+        local size = params.totalQueueSize
+        local displayTime = params.displayTime
+
+        local cardOptions = subQueue.cardOptions or {}
+
+        -- Progress bar calculation
+        local progressAmount = 7
+        local playerColumn = pos == 1 and progressAmount 
+            or (progressAmount - math.ceil(pos / (size / progressAmount)) + 1)
+
+        -- Build progress columns
+        local progressColumns = {}
+        for i = 1, progressAmount + 2 do
+            -- Column setup with dots and labels
+            -- ...
+        end
+
+        return {
+            type = 'AdaptiveCard',
+            version = '1.6',
+            body = {
+                -- Title, progress bar, and info display
+                -- ...
+            },
+        }
+    end
+    ```
+  </Accordion>
+</ParamField>
+
+### Customizing the Card
+
+You can completely customize the adaptive card appearance:
+
+<CodeGroup>
+```lua Minimal Card
+generateCard = function(params)
+    return {
+        type = 'AdaptiveCard',
+        version = '1.6',
+        body = {
+            {
+                type = 'TextBlock',
+                text = 'Queue Position',
+                size = 'large',
+                weight = 'bolder',
+            },
+            {
+                type = 'TextBlock',
+                text = ('%d / %d'):format(params.globalPos, params.totalQueueSize),
+                size = 'extralarge',
+            },
+            {
+                type = 'TextBlock',
+                text = 'Wait time: ' .. params.displayTime,
+                size = 'medium',
+            },
+        },
+    }
+end
+```
+
+```lua Detailed Card
+generateCard = function(params)
+    return {
+        type = 'AdaptiveCard',
+        version = '1.6',
+        body = {
+            {
+                type = 'TextBlock',
+                text = 'Welcome to Our Server!',
+                size = 'large',
+                weight = 'bolder',
+                color = 'accent',
+            },
+            {
+                type = 'TextBlock',
+                text = 'Queue: ' .. params.subQueue.name,
+                size = 'medium',
+            },
+            {
+                type = 'TextBlock',
+                text = 'Position: ' .. params.globalPos .. ' of ' .. params.totalQueueSize,
+                size = 'medium',
+                color = 'good',
+            },
+            {
+                type = 'TextBlock',
+                text = 'Time waiting: ' .. params.displayTime,
+                size = 'small',
+                isSubtle = true,
+            },
+            {
+                type = 'TextBlock',
+                text = 'Thank you for your patience!',
+                size = 'small',
+                wrap = true,
+            },
+        },
+    }
+end
+```
+</CodeGroup>
+
+<Note>
+  Learn more about Adaptive Cards at [adaptivecards.io](https://adaptivecards.io/)
+</Note>

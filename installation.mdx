@@ -1,0 +1,384 @@
+---
+title: Installation
+description: Step-by-step guide to installing Qbox Core and its dependencies
+---
+
+# Installing Qbox Core
+
+This guide will walk you through installing Qbox Core and all required dependencies for your FiveM server.
+
+<Note>
+  Qbox Core requires **FiveM server build 10731 or higher** with **OneSync Infinity** enabled.
+</Note>
+
+## Prerequisites
+
+Before installing Qbox Core, ensure your server meets these requirements:
+
+- FiveM server artifacts build 10731+
+- OneSync Infinity enabled
+- MySQL database server
+- Basic knowledge of FiveM server administration
+
+## Dependencies
+
+Qbox Core requires three core dependencies that must be installed first:
+
+<CardGroup cols={3}>
+  <Card title="oxmysql" icon="database" href="https://github.com/CommunityOx/oxmysql">
+    Database connector for MySQL/MariaDB
+  </Card>
+  <Card title="ox_lib" icon="cube" href="https://github.com/CommunityOx/ox_lib">
+    Utility library with UI components
+  </Card>
+  <Card title="ox_inventory" icon="box" href="https://github.com/CommunityOx/ox_inventory">
+    Modern inventory system
+  </Card>
+</CardGroup>
+
+## Step 1: Enable OneSync Infinity
+
+<Warning>
+  OneSync Infinity is **required** for Qbox Core to function. The server will not start without it.
+</Warning>
+
+Enable OneSync Infinity in your server configuration:
+
+<Tabs>
+  <Tab title="txAdmin">
+    1. Open your txAdmin panel
+    2. Navigate to Settings → FXServer
+    3. Find "OneSync" setting
+    4. Select "Infinity" from the dropdown
+    5. Save and restart your server
+  </Tab>
+  <Tab title="server.cfg">
+    Add this to your `server.cfg`:
+    ```bash server.cfg
+    set onesync on
+    setr onesync_enableInfinity 1
+    ```
+  </Tab>
+  <Tab title="Command Line">
+    Add to your server startup command:
+    ```bash
+    +set onesync on +setr onesync_enableInfinity 1
+    ```
+  </Tab>
+</Tabs>
+
+## Step 2: Install oxmysql
+
+<Steps>
+  <Step title="Download oxmysql">
+    Download the latest release from [GitHub](https://github.com/CommunityOx/oxmysql/releases)
+  </Step>
+  <Step title="Extract to resources">
+    Extract the `oxmysql` folder to your `resources` directory
+  </Step>
+  <Step title="Configure database connection">
+    Add your database connection string to `server.cfg`:
+    ```bash server.cfg
+    set mysql_connection_string "mysql://username:password@localhost/database?charset=utf8mb4"
+    ```
+  </Step>
+  <Step title="Start the resource">
+    Add to your `server.cfg` before qbx_core:
+    ```bash server.cfg
+    ensure oxmysql
+    ```
+  </Step>
+</Steps>
+
+<Note>
+  Replace `username`, `password`, `localhost`, and `database` with your actual MySQL credentials.
+</Note>
+
+## Step 3: Install ox_lib
+
+<Steps>
+  <Step title="Download ox_lib">
+    Download the latest release (v3.20.0 or higher) from [GitHub](https://github.com/CommunityOx/ox_lib/releases)
+  </Step>
+  <Step title="Extract to resources">
+    Extract the `ox_lib` folder to your `resources` directory
+  </Step>
+  <Step title="Start the resource">
+    Add to your `server.cfg`:
+    ```bash server.cfg
+    ensure ox_lib
+    ```
+  </Step>
+</Steps>
+
+<Warning>
+  Qbox Core requires **ox_lib version 3.20.0 or higher**. Make sure you download a compatible version.
+</Warning>
+
+## Step 4: Install ox_inventory
+
+<Steps>
+  <Step title="Download ox_inventory">
+    Download the latest release (v2.42.1 or higher) from [GitHub](https://github.com/CommunityOx/ox_inventory/releases)
+  </Step>
+  <Step title="Extract to resources">
+    Extract the `ox_inventory` folder to your `resources` directory
+  </Step>
+  <Step title="Configure for Qbox">
+    Add this to your `server.cfg` **before** starting ox_inventory:
+    ```bash server.cfg
+    setr inventory:framework "qbx"
+    ```
+  </Step>
+  <Step title="Start the resource">
+    Add to your `server.cfg`:
+    ```bash server.cfg
+    ensure ox_inventory
+    ```
+  </Step>
+</Steps>
+
+<Warning>
+  The `inventory:framework` convar **must** be set to `"qbx"` for Qbox Core to work properly.
+</Warning>
+
+## Step 5: Install qbx_core
+
+<Steps>
+  <Step title="Download qbx_core">
+    Download the latest release from [GitHub](https://github.com/Qbox-project/qbx_core/releases)
+  </Step>
+  <Step title="Extract to resources">
+    Extract the `qbx_core` folder to your `resources` directory
+  </Step>
+  <Step title="Import database">
+    Import the `qbx_core.sql` file into your MySQL database:
+    ```bash
+    mysql -u username -p database < qbx_core.sql
+    ```
+    
+    Or use phpMyAdmin/HeidiSQL to import the file manually.
+  </Step>
+  <Step title="Start the resource">
+    Add to your `server.cfg` after the dependencies:
+    ```bash server.cfg
+    ensure qbx_core
+    ```
+  </Step>
+</Steps>
+
+## Step 6: Verify installation
+
+Your `server.cfg` should now include these lines in this order:
+
+```bash server.cfg
+# Database
+set mysql_connection_string "mysql://username:password@localhost/database?charset=utf8mb4"
+
+# OneSync
+set onesync on
+setr onesync_enableInfinity 1
+
+# Inventory Framework
+setr inventory:framework "qbx"
+
+# Dependencies
+ensure oxmysql
+ensure ox_lib
+ensure ox_inventory
+
+# Qbox Core
+ensure qbx_core
+```
+
+<Note>
+  The order matters! Make sure dependencies are loaded before qbx_core.
+</Note>
+
+## Optional dependencies
+
+For full functionality, you may want to install these additional resources:
+
+<CardGroup cols={2}>
+  <Card title="qbx_vehiclekeys" icon="key">
+    Vehicle key system for persistent vehicles
+    ```lua config/server.lua
+    giveVehicleKeys = function(src, plate, vehicle)
+        return exports.qbx_vehiclekeys:GiveKeys(src, vehicle)
+    end
+    ```
+  </Card>
+  <Card title="qbx_spawn" icon="location-dot">
+    Spawn selection system (required if `startingApartment = true`)
+    ```lua config/client.lua
+    characters = {
+        startingApartment = true,
+    }
+    ```
+  </Card>
+  <Card title="qbx_idcard" icon="id-card">
+    ID card system for starter items
+    ```lua config/shared.lua
+    starterItems = {
+        { name = 'id_card', amount = 1 },
+    }
+    ```
+  </Card>
+  <Card title="Renewed-Banking" icon="building-columns">
+    Society banking system
+    ```lua config/server.lua
+    money = {
+        paycheckSociety = true
+    }
+    ```
+  </Card>
+</CardGroup>
+
+## Database tables
+
+The `qbx_core.sql` file creates these essential tables:
+
+### players table
+
+Stores all player character data:
+
+```sql
+CREATE TABLE IF NOT EXISTS `players` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `citizenid` varchar(50) NOT NULL,
+  `cid` int(11) DEFAULT NULL,
+  `license` varchar(255) NOT NULL,
+  `name` varchar(255) NOT NULL,
+  `money` text NOT NULL,
+  `charinfo` text DEFAULT NULL,
+  `job` text NOT NULL,
+  `gang` text DEFAULT NULL,
+  `position` text NOT NULL,
+  `metadata` text NOT NULL,
+  `inventory` longtext DEFAULT NULL,
+  `phone_number` VARCHAR(20) DEFAULT NULL,
+  `last_updated` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`citizenid`)
+);
+```
+
+### player_groups table
+
+Stores player job and gang assignments:
+
+```sql
+CREATE TABLE IF NOT EXISTS `player_groups` (
+  `citizenid` VARCHAR(50) NOT NULL,
+  `group` VARCHAR(50) NOT NULL,
+  `type` VARCHAR(50) NOT NULL,
+  `grade` TINYINT(3) UNSIGNED NOT NULL,
+  PRIMARY KEY (`citizenid`, `type`, `group`),
+  CONSTRAINT `fk_citizenid` FOREIGN KEY (`citizenid`) 
+    REFERENCES `players` (`citizenid`) 
+    ON UPDATE CASCADE 
+    ON DELETE CASCADE
+);
+```
+
+### bans table
+
+Stores player bans:
+
+```sql
+CREATE TABLE IF NOT EXISTS `bans` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `name` varchar(50) DEFAULT NULL,
+  `license` varchar(50) DEFAULT NULL,
+  `discord` varchar(50) DEFAULT NULL,
+  `ip` varchar(50) DEFAULT NULL,
+  `reason` text DEFAULT NULL,
+  `expire` int(11) DEFAULT NULL,
+  `bannedby` varchar(255) NOT NULL DEFAULT 'LeBanhammer',
+  PRIMARY KEY (`id`)
+);
+```
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Server won't start - OneSync error">
+    **Error message:**
+    ```
+    OneSync Infinity is not enabled
+    ```
+    
+    **Solution:**
+    Make sure you have enabled OneSync Infinity in txAdmin settings or added `+set onesync on` to your startup command.
+  </Accordion>
+  
+  <Accordion title="Server won't start - ox_lib version error">
+    **Error message:**
+    ```
+    ox_lib version 3.20.0 or higher is required
+    ```
+    
+    **Solution:**
+    Download the latest version of ox_lib from the GitHub releases page.
+  </Accordion>
+  
+  <Accordion title="Server won't start - ox_inventory version error">
+    **Error message:**
+    ```
+    ox_inventory version 2.42.1 or higher is required
+    ```
+    
+    **Solution:**
+    Download the latest version of ox_inventory from the GitHub releases page.
+  </Accordion>
+  
+  <Accordion title="Server won't start - inventory framework error">
+    **Error message:**
+    ```
+    inventory:framework must be set to "qbx"
+    ```
+    
+    **Solution:**
+    Add `setr inventory:framework "qbx"` to your server.cfg before starting ox_inventory.
+  </Accordion>
+  
+  <Accordion title="Database connection error">
+    **Error message:**
+    ```
+    Failed to execute mysql_connection_string
+    ```
+    
+    **Solution:**
+    Check your MySQL credentials in the connection string. Make sure the database exists and the user has proper permissions.
+  </Accordion>
+</AccordionGroup>
+
+## Server convars
+
+Qbox Core supports several optional convars for customization:
+
+```bash server.cfg
+# Maximum jobs per player (default: 1)
+setr qbx:max_jobs_per_player 2
+
+# Maximum gangs per player (default: 1)  
+setr qbx:max_gangs_per_player 1
+
+# Should SetJob replace current job? (default: true)
+setr qbx:setjob_replaces "true"
+
+# Should SetGang replace current gang? (default: true)
+setr qbx:setgang_replaces "true"
+
+# Routing bucket lockdown mode (default: inactive)
+# Options: strict, relaxed, inactive
+setr qbx:bucketlockdownmode "inactive"
+
+# Inventory accounts (default: ["money"])
+setr inventory:accounts '["money"]'
+```
+
+## Next steps
+
+<Card title="Quick Start Guide" icon="rocket" href="/quickstart">
+  Now that you have installed Qbox Core, learn how to configure it and create your first character
+</Card>

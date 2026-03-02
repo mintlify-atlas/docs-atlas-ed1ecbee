@@ -1,0 +1,283 @@
+---
+title: Server Configuration
+description: Configure server-side settings for Qbox Core including money types, player settings, and server behavior
+---
+
+The server configuration file (`config/server.lua`) contains all server-side settings for Qbox Core. This includes money management, player data, character settings, and server behavior.
+
+## Update Interval
+
+<ParamField path="updateInterval" type="number" default="5">
+  How often to update player data in minutes.
+</ParamField>
+
+## Money Configuration
+
+Configure money types, starting amounts, and paycheck behavior.
+
+<ParamField path="money.moneyTypes" type="Money" default="{ cash = 500, bank = 5000, crypto = 0 }">
+  Define money types and their starting amounts. You can add or remove money types for your server (e.g., `blackmoney = 0`).
+  
+  **Warning:** Once added, money types will not be removed from the database automatically.
+  
+  **Type Definition:**
+  ```lua
+  ---@alias MoneyType 'cash' | 'bank' | 'crypto'
+  ---@alias Money {cash: number, bank: number, crypto: number}
+  ```
+</ParamField>
+
+<ParamField path="money.dontAllowMinus" type="string[]" default="{ 'cash', 'crypto' }">
+  Money types that are not allowed to go negative. Players cannot have negative amounts of these money types.
+</ParamField>
+
+<ParamField path="money.paycheckTimeout" type="number" default="10">
+  The time in minutes between paycheck distributions.
+</ParamField>
+
+<ParamField path="money.paycheckSociety" type="boolean" default="false">
+  If `true`, paychecks will come from the society account that the player is employed at. If `false`, paychecks are generated directly.
+</ParamField>
+
+## Player Configuration
+
+Configure player-specific settings including hunger/thirst rates and identifier generation.
+
+### Needs System
+
+<ParamField path="player.hungerRate" type="number" default="4.2">
+  Rate at which hunger decreases over time.
+</ParamField>
+
+<ParamField path="player.thirstRate" type="number" default="3.8">
+  Rate at which thirst decreases over time.
+</ParamField>
+
+### Blood Types
+
+<ParamField path="player.bloodTypes" type="string[]">
+  Available blood types for character creation:
+  ```lua
+  { 'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-' }
+  ```
+</ParamField>
+
+### Identifier Types
+
+Player identifiers are automatically generated using custom value functions. Each identifier type has a specific format:
+
+<ParamField path="player.identifierTypes" type="table<UniqueIdType, {valueFunction: function}>">
+  Configuration for unique player identifiers. Each type uses a `valueFunction` to generate unique values.
+  
+  **Available Identifier Types:**
+  
+  | Type | Format | Example |
+  |------|--------|----------|
+  | `citizenid` | Random letter + 7 dots pattern | `A1234567` |
+  | `AccountNumber` | US0 + digit + QBX + random numbers | `US01QBX12349876543` |
+  | `PhoneNumber` | 3-digit area code + 7-digit number | `5551234567` |
+  | `FingerId` | 15 random characters | `abc123def456789` |
+  | `WalletId` | QB- + 8-digit number | `QB-12345678` |
+  | `SerialNumber` | 8-digit number | `12345678` |
+</ParamField>
+
+## Character Data Tables
+
+<ParamField path="characterDataTables" type="[TableName, ColumnName][]">
+  Database tables and columns that store character data. Rows in these tables are automatically deleted when a character is deleted.
+  
+  **Included Tables:**
+  - `properties` (owner)
+  - `bank_accounts_new` (id)
+  - `playerskins` (citizenid)
+  - `player_mails` (citizenid)
+  - `player_outfits` (citizenid)
+  - `player_vehicles` (citizenid)
+  - `player_groups` (citizenid)
+  - `players` (citizenid)
+  - NPWD tables (calls, messages, notes, contacts, gallery, profiles, etc.)
+</ParamField>
+
+## Server Settings
+
+Core server behavior and access control settings.
+
+<ParamField path="server.pvp" type="boolean" default="true">
+  Enable or disable PvP (player vs player combat) on the server. Controls whether players can shoot other players.
+</ParamField>
+
+<ParamField path="server.closed" type="boolean" default="false">
+  Set server to closed mode. When `true`, only users with the `qbadmin.join` ace permission can join.
+</ParamField>
+
+<ParamField path="server.closedReason" type="string" default="Server Closed">
+  Message displayed to players when they cannot join a closed server.
+</ParamField>
+
+<ParamField path="server.whitelist" type="boolean" default="false">
+  Enable or disable whitelist on the server.
+</ParamField>
+
+<ParamField path="server.whitelistPermission" type="string" default="admin">
+  Permission required to enter the server when whitelist is enabled.
+</ParamField>
+
+<ParamField path="server.discord" type="string" default="">
+  Discord invite link for your server.
+</ParamField>
+
+<ParamField path="server.checkDuplicateLicense" type="boolean" default="true">
+  Check for duplicate Rockstar licenses when players join.
+</ParamField>
+
+<ParamField path="server.requireOptIn" type="boolean" default="true">
+  **Deprecated:** Use CFG ACE system instead.
+  
+  When `true`, requires players to use the `/optin` command before accessing admin commands.
+</ParamField>
+
+<ParamField path="server.permissions" type="string[]" default="{ 'god', 'admin', 'mod' }">
+  Permission groups for your server. Add groups here after creating them in your `server.cfg`.
+</ParamField>
+
+## Character Slots
+
+Configure how many characters players can create.
+
+<ParamField path="characters.playersNumberOfCharacters" type="table<string, number>">
+  Define maximum number of characters per Rockstar license. Find licenses in your database's player table.
+  
+  **Example:**
+  ```lua
+  playersNumberOfCharacters = {
+      ['license2:xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'] = 5,
+  }
+  ```
+</ParamField>
+
+<ParamField path="characters.defaultNumberOfCharacters" type="number" default="3">
+  Default maximum number of characters for players not specified in `playersNumberOfCharacters`.
+</ParamField>
+
+## Logging
+
+Configure Discord webhooks for core events.
+
+<Note>
+  This configuration is for core events only. Other resource webhooks should be configured in their respective resources.
+</Note>
+
+<ParamField path="logging.webhook" type="table<string, string?>">
+  Discord webhook URLs for different event types:
+  
+  - `default` - Default events
+  - `joinleave` - Player join/leave events
+  - `ooc` - Out of character chat
+  - `anticheat` - Anticheat events
+  - `playermoney` - Money transaction events
+  
+  Set to `nil` to disable logging for that event type.
+</ParamField>
+
+<ParamField path="logging.role" type="table">
+  Discord roles/users/channels to tag for high priority logs.
+  
+  - Roles: `<@&roleid>`
+  - Users/Channels: `<@userid>` or `<@channelid>`
+</ParamField>
+
+## Vehicle Persistence
+
+<ParamField path="persistence.lockState" type="'lock' | 'unlock'" default="lock">
+  Default lock state for spawned vehicles:
+  - `lock` - Vehicle will be locked when spawned
+  - `unlock` - Vehicle will be unlocked when spawned
+</ParamField>
+
+## Integration Functions
+
+These functions integrate with other resources. Modify them if you use different resources.
+
+### Vehicle Keys
+
+<ParamField path="giveVehicleKeys" type="function">
+  Function to give vehicle keys to a player.
+  
+  **Parameters:**
+  - `src` (number) - Player source
+  - `plate` (string) - Vehicle plate
+  - `vehicle` (number) - Vehicle entity
+  
+  **Default Implementation:**
+  ```lua
+  giveVehicleKeys = function(src, plate, vehicle)
+      return exports.qbx_vehiclekeys:GiveKeys(src, vehicle)
+  end
+  ```
+</ParamField>
+
+<ParamField path="setVehicleLock" type="function">
+  Function to set vehicle lock state.
+  
+  **Parameters:**
+  - `vehicle` (number) - Vehicle entity
+  - `state` (string) - Lock state ('lock' or 'unlock')
+  
+  **Default Implementation:**
+  ```lua
+  setVehicleLock = function(vehicle, state)
+      exports.qbx_vehiclekeys:SetLockState(vehicle, state)
+  end
+  ```
+</ParamField>
+
+### Society Banking
+
+<ParamField path="getSocietyAccount" type="function">
+  Get society account balance. Used with Renewed-Banking.
+  
+  **Parameters:**
+  - `accountName` (string) - Society account name
+  
+  **Returns:** Account balance
+  
+  **Default Implementation:**
+  ```lua
+  getSocietyAccount = function(accountName)
+      return exports['Renewed-Banking']:getAccountMoney(accountName)
+  end
+  ```
+</ParamField>
+
+<ParamField path="removeSocietyMoney" type="function">
+  Remove money from society account.
+  
+  **Parameters:**
+  - `accountName` (string) - Society account name
+  - `payment` (number) - Amount to remove
+  
+  **Default Implementation:**
+  ```lua
+  removeSocietyMoney = function(accountName, payment)
+      return exports['Renewed-Banking']:removeAccountMoney(accountName, payment)
+  end
+  ```
+</ParamField>
+
+### Paycheck Distribution
+
+<ParamField path="sendPaycheck" type="function">
+  Function called to send paycheck to a player.
+  
+  **Parameters:**
+  - `player` (Player) - Player object
+  - `payment` (number) - Payment amount
+  
+  **Default Implementation:**
+  ```lua
+  sendPaycheck = function(player, payment)
+      player.Functions.AddMoney('bank', payment)
+      Notify(player.PlayerData.source, locale('info.received_paycheck', payment))
+  end
+  ```
+</ParamField>

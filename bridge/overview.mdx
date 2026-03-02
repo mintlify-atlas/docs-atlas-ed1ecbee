@@ -1,0 +1,185 @@
+---
+title: QB-Core Compatibility Bridge
+description: Overview of Qbox's backwards compatibility layer for QB-Core resources
+---
+
+## What is the QB-Core Bridge?
+
+The QB-Core compatibility bridge is a built-in compatibility layer in Qbox Core that allows most QB-Core resources to run without any modifications. This bridge translates QB-Core API calls to their Qbox equivalents, making migration seamless.
+
+<Info>
+  The bridge layer provides backwards compatibility with most QB resources with **zero effort required**. Simply start your QB resource and it will work with Qbox.
+</Info>
+
+## How It Works
+
+The bridge provides a complete QB-Core API surface that internally calls Qbox's modern implementations:
+
+- **Shared Layer**: Translates items, jobs, gangs, and utility functions
+- **Server Layer**: Wraps player objects, functions, and commands
+- **Client Layer**: Provides UI elements, notifications, and vehicle functions
+
+### Core Object
+
+The bridge exposes a `qb-core` compatible object through the standard export:
+
+```lua
+local QBCore = exports['qb-core']:GetCoreObject()
+```
+
+This object contains all the familiar QB-Core tables:
+- `QBCore.Functions`
+- `QBCore.Player` (server)
+- `QBCore.Shared`
+- `QBCore.Config`
+
+## Enabling/Disabling the Bridge
+
+The bridge is enabled by default. You can control it using a convar:
+
+```bash
+# In your server.cfg
+setvars qbx:enablebridge "true"  # enabled (default)
+setvars qbx:enablebridge "false" # disabled
+```
+
+<Warning>
+  Disabling the bridge will break any QB-Core resources that haven't been updated to use Qbox's native API.
+</Warning>
+
+## Architecture
+
+The bridge is organized into three main contexts:
+
+### Shared (`bridge/qb/shared/`)
+
+- **Items**: Automatically converts ox_inventory items to QB-Core format
+- **Jobs & Gangs**: Provides real-time access to job and gang data
+- **Utilities**: Wraps common string/math operations to ox_lib equivalents
+
+```lua:bridge/qb/shared/main.lua
+-- Items are automatically converted from ox_inventory
+local oxItems = require '@ox_inventory.data.items'
+for item, data in pairs(oxItems) do
+    qbShared.Items[item] = {
+        name = item,
+        label = data.label,
+        weight = data.weight or 0,
+        type = 'item',
+        -- ... QB-Core compatible structure
+    }
+end
+```
+
+### Server (`bridge/qb/server/`)
+
+- **Player Functions**: All QB player methods work seamlessly
+- **Server Functions**: GetPlayer, CreateUseableItem, Notify, etc.
+- **Commands**: QB-Core command registration API
+- **Callbacks**: Legacy callback system (deprecated in favor of ox_lib)
+
+```lua:bridge/qb/server/main.lua
+qbCoreCompat = {}
+qbCoreCompat.Config = lib.table.merge(require 'config.server', require 'config.shared')
+qbCoreCompat.Shared = require 'bridge.qb.shared.main'
+qbCoreCompat.Players = QBX.Players
+qbCoreCompat.Functions = require 'bridge.qb.server.functions'
+```
+
+### Client (`bridge/qb/client/`)
+
+- **PlayerData**: Access to character data
+- **Notifications**: QB-style notifications via ox_lib
+- **DrawText**: Text UI compatibility
+- **Vehicle Functions**: Spawning, properties, etc.
+
+## Inventory Integration
+
+The bridge automatically handles inventory differences between qb-inventory and ox_inventory:
+
+<CodeGroup>
+```lua Item Conversion
+-- bridge/qb/shared/compat.lua
+-- Converts QB items to ox_inventory format
+convertItems(ItemList, items)
+```
+
+```lua Usage in Resources
+-- Your QB resource code works as-is
+local hasItem = QBCore.Functions.HasItem(source, 'phone', 1)
+-- Bridge translates to: exports.ox_inventory:Search(source, 'count', 'phone')
+```
+</CodeGroup>
+
+<Warning>
+  **qb-inventory is NOT compatible** with qbx_core. You must use ox_inventory. The bridge handles translation automatically.
+</Warning>
+
+## Event Compatibility
+
+The bridge maintains all standard QB-Core events:
+
+### Server Events
+- `QBCore:Server:PlayerLoaded`
+- `QBCore:Server:OnPlayerUnload`
+- `QBCore:Server:OnJobUpdate`
+- `QBCore:Server:SetMetaData`
+- Vehicle events via `baseevents`
+
+### Client Events
+- `QBCore:Client:OnPlayerLoaded`
+- `QBCore:Client:OnPlayerUnload`
+- `QBCore:Client:OnJobUpdate`
+- `QBCore:Client:OnGangUpdate`
+- `QBCore:Client:VehicleInfo`
+
+Example from the bridge:
+```lua:bridge/qb/server/events.lua
+RegisterServerEvent('baseevents:enteredVehicle', function(veh, seat, modelName, netId)
+    local src = source
+    local data = {
+        vehicle = veh,
+        seat = seat,
+        name = modelName,
+        netId = netId,
+        event = 'Entered'
+    }
+    TriggerClientEvent('QBCore:Client:VehicleInfo', src, data)
+end)
+```
+
+## Deprecation Notices
+
+Many QB-Core functions are marked as deprecated with guidance on modern alternatives:
+
+```lua
+---@deprecated use https://coxdocs.dev/ox_lib/Modules/Callback/Lua/Server instead
+function qbCoreCompat.Functions.CreateCallback(name, cb)
+    -- Still works, but you should migrate to ox_lib callbacks
+end
+
+---@deprecated use lib.requestModel from ox_lib
+functions.LoadModel = lib.requestModel
+```
+
+These functions still work but will show warnings encouraging you to use modern alternatives.
+
+## Performance Considerations
+
+The bridge adds minimal overhead:
+
+- Most functions are simple wrappers calling Qbox/ox_lib directly
+- No polling or continuous processing
+- Items are converted once at startup
+- Jobs/gangs sync automatically via events
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Compatibility Details" icon="list-check" href="/bridge/compatibility">
+    See exactly which QB resources and functions are supported
+  </Card>
+  <Card title="API Reference" icon="arrow-right" href="/api/shared/exports">
+    View the complete native Qbox API exports reference
+  </Card>
+</CardGroup>

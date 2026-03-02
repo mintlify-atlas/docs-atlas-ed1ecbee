@@ -1,0 +1,294 @@
+---
+title: Introduction
+description: Welcome to Qbox Core - A modern FiveM framework for GTA V roleplay servers
+---
+
+# Welcome to Qbox Core
+
+_"And then there was Qbox"_
+
+Qbox Core is a framework created on September 27, 2022, as a successor to qb-core and continues the development of a solid foundation for building easy-to-use, performant, and secure server resources.
+
+## What is Qbox Core?
+
+Qbox Core is the foundation for your FiveM GTA V roleplay server. Built with performance and security in mind, it provides everything you need to create an immersive roleplay experience.
+
+<CardGroup cols={2}>
+  <Card title="Installation" icon="download" href="/installation">
+    Get started with installing Qbox Core and its dependencies
+  </Card>
+  <Card title="Quick Start" icon="rocket" href="/quickstart">
+    Create your first character and learn the basics
+  </Card>
+  <Card title="API Reference" icon="code" href="/api/shared/exports">
+    Explore the export-based API for reading and writing core data
+  </Card>
+  <Card title="Configuration" icon="gear" href="/configuration/server">
+    Configure your server settings and customize the framework
+  </Card>
+</CardGroup>
+
+## Key features
+
+Qbox Core comes packed with features designed to make server development easier and more efficient:
+
+### Backwards compatibility
+
+<Note>
+  The bridge layer provides backwards compatibility with most QB resources with **zero effort required**. Simply drop in your existing resources and they'll work seamlessly.
+</Note>
+
+### Built-in multicharacter system
+
+Players can create and manage multiple characters on your server:
+
+- Configurable character slots per player (default: 3)
+- Custom character limits per license
+- Character data isolation with automatic cleanup
+- Integrated character selection UI
+
+```lua config/server.lua
+characters = {
+    playersNumberOfCharacters = {
+        ['license2:xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'] = 5,
+    },
+    defaultNumberOfCharacters = 3,
+}
+```
+
+### Multi-job and gang support
+
+Flexible job and gang system with support for multiple simultaneous jobs:
+
+- Primary and secondary job assignments
+- Grade-based permissions and pay scales
+- On/off duty system
+- Society bank accounts integration
+- Boss permissions and bank authorization
+
+<CodeGroup>
+```lua Example Job Definition
+['police'] = {
+    label = 'LSPD',
+    type = 'leo',
+    defaultDuty = true,
+    offDutyPay = false,
+    grades = {
+        [0] = {
+            name = 'Recruit',
+            payment = 50
+        },
+        [4] = {
+            name = 'Chief',
+            isboss = true,
+            bankAuth = true,
+            payment = 150
+        },
+    },
+}
+```
+
+```lua Setting a Player's Job
+exports.qbx_core:SetJob(source, 'police', 2)
+```
+</CodeGroup>
+
+### Queue system
+
+Built-in queue system for managing server capacity:
+
+- Priority queue support
+- Configurable queue positions
+- Adaptive queue timing
+- Custom join messages
+
+### Persistent vehicles
+
+Vehicles persist across server restarts:
+
+- Automatic vehicle spawning at last location
+- Configurable lock states
+- Vehicle ownership tracking
+- Integration with qbx_vehiclekeys
+
+```lua config/server.lua
+persistence = {
+    lockState = 'lock', -- 'lock' or 'unlock'
+}
+```
+
+### Export-based API
+
+Clean, modern API using exports for all core functionality:
+
+```lua
+-- Get a player
+local player = exports.qbx_core:GetPlayer(source)
+
+-- Add money
+exports.qbx_core:AddMoney(source, 'cash', 500)
+
+-- Set job
+exports.qbx_core:SetJob(source, 'police', 0)
+
+-- Update metadata
+exports.qbx_core:SetMetadata(source, 'hunger', 100)
+```
+
+## Developer modules
+
+The core makes several optional modules available for developers to import into their resources:
+
+<CardGroup cols={3}>
+  <Card title="Hooks" icon="hook">
+    Ox-style hooks to extend functionality of your resources
+    ```lua
+    local hooks = require 'modules.hooks'
+    ```
+  </Card>
+  <Card title="Logger" icon="file-lines">
+    Log to Discord or Ox's logger through one unified interface
+    ```lua
+    local logger = require 'modules.logger'
+    ```
+  </Card>
+  <Card title="Lib" icon="book">
+    Common functions for tables, strings, math, native audio, vehicles, and drawing text
+    ```lua
+    local qbx = require 'modules.lib'
+    ```
+  </Card>
+</CardGroup>
+
+### Hooks module
+
+Provide extensibility points in your resources:
+
+```lua modules/hooks.lua
+local triggerEventHooks = require 'modules.hooks'
+
+-- In your resource
+if not triggerEventHooks('eventName', payload) then
+    -- Hook returned false, cancel the action
+    return
+end
+
+-- Other resources can register hooks
+exports.qbx_core:registerHook('eventName', function(payload)
+    -- Your logic here
+    return true -- or false to cancel
+end)
+```
+
+### Logger module
+
+Unified logging for Discord webhooks and Ox's logger (Datadog, Grafana Loki, Fivemanage):
+
+```lua Example Usage
+local logger = require 'modules.logger'
+
+logger.log({
+    source = 'MyResource',
+    event = 'PlayerAction',
+    message = 'Player completed a mission',
+    webhook = 'https://discord.com/api/webhooks/...',
+    color = 'green',
+    tags = {'<@&123456789>'},
+})
+```
+
+### Lib module
+
+Utility functions for common operations:
+
+```lua
+local qbx = require 'modules.lib'
+
+-- String utilities
+local randomId = qbx.string.random('A.......')
+
+-- Math utilities  
+local rounded = qbx.math.round(3.7)
+
+-- Table utilities
+local grouped = qbx.table.mapBySubfield(data, 'category')
+```
+
+## Money system
+
+Flexible money system with configurable money types:
+
+```lua config/server.lua
+money = {
+    moneyTypes = { 
+        cash = 500,    -- Starting cash
+        bank = 5000,   -- Starting bank balance
+        crypto = 0     -- Starting crypto
+    },
+    dontAllowMinus = { 'cash', 'crypto' },
+    paycheckTimeout = 10,
+    paycheckSociety = false
+}
+```
+
+<Warning>
+  Once a money type is added, it will not be removed from the database even if you remove it from the config!
+</Warning>
+
+## Player identifiers
+
+Automatic generation of unique player identifiers:
+
+- **citizenid**: Unique character identifier (A + 7 random chars)
+- **AccountNumber**: Bank account number
+- **PhoneNumber**: 10-digit phone number
+- **FingerId**: 15-character fingerprint ID
+- **WalletId**: QB-style wallet ID
+- **SerialNumber**: 8-digit serial number
+
+## Database structure
+
+Qbox Core uses a modern database structure with proper foreign key constraints:
+
+```sql qbx_core.sql
+CREATE TABLE IF NOT EXISTS `players` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `citizenid` varchar(50) NOT NULL,
+  `license` varchar(255) NOT NULL,
+  `name` varchar(255) NOT NULL,
+  `money` text NOT NULL,
+  `charinfo` text DEFAULT NULL,
+  `job` text NOT NULL,
+  `gang` text DEFAULT NULL,
+  `position` text NOT NULL,
+  `metadata` text NOT NULL,
+  PRIMARY KEY (`citizenid`)
+);
+```
+
+## Need help?
+
+<Card title="Join our Discord" icon="discord" href="https://discord.gg/qbox">
+  Get support, share ideas, and connect with the Qbox community
+</Card>
+
+<Warning>
+  We advise **not modifying the core** outside of the config files. If you feel something is missing or want to suggest additional functionality, bring it up on the official Qbox Discord!
+</Warning>
+
+## Next steps
+
+<Steps>
+  <Step title="Install dependencies">
+    Install oxmysql, ox_lib, and ox_inventory
+  </Step>
+  <Step title="Configure your server">
+    Edit the config files to match your server setup
+  </Step>
+  <Step title="Import the database">
+    Run the qbx_core.sql file to create the required tables
+  </Step>
+  <Step title="Start building">
+    Use the export-based API to create your custom resources
+  </Step>
+</Steps>

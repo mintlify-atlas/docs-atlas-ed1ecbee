@@ -1,0 +1,531 @@
+---
+title: Permission System
+description: Admin permissions, opt-in system, and command restrictions in Qbox Core
+icon: shield-halved
+---
+
+## Overview
+
+Qbox Core uses FiveM's native ACE permission system combined with an opt-in mechanism for admin actions. This ensures that admin commands are restricted and provides an additional layer of protection against accidental actions.
+
+## ACE Permissions
+
+Qbox Core leverages FiveM's built-in ACE (Access Control Entry) system for command restrictions.
+
+### Permission Groups
+
+Commands are restricted using the `group.admin` permission:
+
+```lua server/commands.lua
+lib.addCommand('car', {
+    help = locale('command.car.help'),
+    restricted = 'group.admin'
+}, function(source, args)
+    -- Command implementation
+end)
+```
+
+### Server Configuration
+
+Add admins to the `admin` group in your `server.cfg`:
+
+```cfg server.cfg
+# Grant admin permissions
+add_ace group.admin command allow
+add_principal identifier.fivem:12345 group.admin
+```
+
+For more details, see [FiveM ACE Documentation](https://docs.fivem.net/docs/server-manual/server-commands/#access-control).
+
+## Admin Opt-In System
+
+The opt-in system requires admins to explicitly enable their admin mode before using admin commands. This prevents accidental use of admin powers during roleplay.
+
+### Opt-In Metadata
+
+```lua types.lua
+---@class PlayerMetadata
+---@field optin? boolean -- If opted in for admin duty
+```
+
+### Checking Opt-In Status
+
+```lua
+local isOptin = exports.qbx_core:IsOptin(source)
+```
+
+### Toggle Opt-In
+
+```lua
+exports.qbx_core:ToggleOptin(source)
+```
+
+### Opt-In Command
+
+```lua server/commands.lua
+lib.addCommand('optin', {
+    help = locale('command.optin.help'),
+    restricted = 'group.admin'
+}, function(source, args)
+    ToggleOptin(source)
+    Notify(source, locale('success.optin_set', IsOptin(source) and 'in' or 'out'))
+end)
+```
+
+Usage:
+```bash
+/optin  # Toggle opt-in status
+```
+
+### Enforcing Opt-In
+
+Most admin commands check opt-in status before executing:
+
+```lua server/commands.lua
+lib.addCommand('tp', {
+    help = locale('command.tp.help'),
+    restricted = 'group.admin'
+}, function(source, args)
+    if not IsOptin(source) then 
+        Notify(source, locale('error.not_optin'), 'error') 
+        return 
+    end
+    
+    -- Teleport logic
+end)
+```
+
+## Admin Commands
+
+### Teleportation
+
+```lua server/commands.lua
+-- Teleport to coordinates or player
+lib.addCommand('tp', {
+    params = {
+        { name = 'x', help = 'X coordinate or player ID' },
+        { name = 'y', help = 'Y coordinate', optional = true },
+        { name = 'z', help = 'Z coordinate', optional = true }
+    },
+    restricted = 'group.admin'
+}, function(source, args)
+    -- Implementation
+end)
+
+-- Teleport to marker
+lib.addCommand('tpm', {
+    help = locale('command.tpm.help'),
+    restricted = 'group.admin'
+}, function(source)
+    TriggerClientEvent('QBCore:Command:GoToMarker', source)
+end)
+```
+
+Usage:
+```bash
+/tp 123.4 456.7 789.0  # Teleport to coordinates
+/tp 5                   # Teleport to player ID 5
+/tpm                    # Teleport to waypoint
+```
+
+### Vehicle Commands
+
+```lua server/commands.lua
+-- Spawn vehicle
+lib.addCommand('car', {
+    params = {
+        { name = 'model', help = 'Vehicle model name' },
+        { name = 'keepCurrentVehicle', help = 'Keep current vehicle', optional = true }
+    },
+    restricted = 'group.admin'
+}, function(source, args)
+    local _, vehicle = qbx.spawnVehicle({
+        model = args.model,
+        spawnSource = GetPlayerPed(source),
+        warp = true
+    })
+    
+    local plate = qbx.getVehiclePlate(vehicle)
+    config.giveVehicleKeys(source, plate, vehicle)
+end)
+
+-- Delete vehicles
+lib.addCommand('dv', {
+    params = {
+        { name = 'radius', help = 'Deletion radius', type = 'number', optional = true }
+    },
+    restricted = 'group.admin'
+}, function(source, args)
+    -- Delete vehicles in radius or current vehicle
+end)
+```
+
+Usage:
+```bash
+/car adder              # Spawn an Adder
+/car police 1           # Spawn police car and keep current vehicle
+/dv                     # Delete current vehicle
+/dv 10                  # Delete vehicles in 10m radius
+```
+
+### Money Commands
+
+```lua server/commands.lua
+-- Give money
+lib.addCommand('givemoney', {
+    params = {
+        { name = 'id', help = 'Player ID', type = 'playerId' },
+        { name = 'moneytype', help = 'Money type (cash/bank)', type = 'string' },
+        { name = 'amount', help = 'Amount', type = 'number' }
+    },
+    restricted = 'group.admin'
+}, function(source, args)
+    local player = GetPlayer(args.id)
+    if player then
+        player.Functions.AddMoney(args.moneytype, args.amount)
+    end
+end)
+
+-- Set money
+lib.addCommand('setmoney', {
+    params = {
+        { name = 'id', help = 'Player ID', type = 'playerId' },
+        { name = 'moneytype', help = 'Money type', type = 'string' },
+        { name = 'amount', help = 'Amount', type = 'number' }
+    },
+    restricted = 'group.admin'
+}, function(source, args)
+    local player = GetPlayer(args.id)
+    if player then
+        player.Functions.SetMoney(args.moneytype, args.amount)
+    end
+end)
+```
+
+Usage:
+```bash
+/givemoney 5 cash 1000   # Give player 5 $1000 cash
+/setmoney 5 bank 10000   # Set player 5's bank to $10000
+```
+
+### Job & Gang Commands
+
+```lua server/commands.lua
+-- Set job (replaces current)
+lib.addCommand('setjob', {
+    params = {
+        { name = 'id', help = 'Player ID', type = 'playerId' },
+        { name = 'job', help = 'Job name', type = 'string' },
+        { name = 'grade', help = 'Grade level', type = 'number', optional = true }
+    },
+    restricted = 'group.admin'
+}, function(source, args)
+    local player = GetPlayer(args.id)
+    if player then
+        player.Functions.SetJob(args.job, args.grade or 0)
+    end
+end)
+
+-- Add job (multi-job)
+lib.addCommand('addjob', {
+    params = {
+        { name = 'id', help = 'Player ID', type = 'playerId' },
+        { name = 'job', help = 'Job name', type = 'string' },
+        { name = 'grade', help = 'Grade level', type = 'number', optional = true }
+    },
+    restricted = 'group.admin'
+}, function(source, args)
+    local player = GetPlayer(args.id)
+    if player then
+        AddPlayerToJob(player.PlayerData.citizenid, args.job, args.grade or 0)
+    end
+end)
+
+-- Change primary job
+lib.addCommand('changejob', {
+    params = {
+        { name = 'id', help = 'Player ID', type = 'playerId' },
+        { name = 'job', help = 'Job name', type = 'string' }
+    },
+    restricted = 'group.admin'
+}, function(source, args)
+    local player = GetPlayer(args.id)
+    if player then
+        SetPlayerPrimaryJob(player.PlayerData.citizenid, args.job)
+    end
+end)
+
+-- Remove job
+lib.addCommand('removejob', {
+    params = {
+        { name = 'id', help = 'Player ID', type = 'playerId' },
+        { name = 'job', help = 'Job name', type = 'string' }
+    },
+    restricted = 'group.admin'
+}, function(source, args)
+    local player = GetPlayer(args.id)
+    if player then
+        RemovePlayerFromJob(player.PlayerData.citizenid, args.job)
+    end
+end)
+
+-- Set gang
+lib.addCommand('setgang', {
+    params = {
+        { name = 'id', help = 'Player ID', type = 'playerId' },
+        { name = 'gang', help = 'Gang name', type = 'string' },
+        { name = 'grade', help = 'Grade level', type = 'number', optional = true }
+    },
+    restricted = 'group.admin'
+}, function(source, args)
+    local player = GetPlayer(args.id)
+    if player then
+        player.Functions.SetGang(args.gang, args.grade or 0)
+    end
+end)
+```
+
+Usage:
+```bash
+/setjob 5 police 2        # Set player to police grade 2
+/addjob 5 ambulance 1     # Add EMS job to player
+/changejob 5 taxi         # Switch to taxi job
+/removejob 5 mechanic     # Remove mechanic job
+/setgang 5 ballas 2       # Set gang to Ballas grade 2
+```
+
+### Server Management
+
+```lua server/commands.lua
+-- Open server
+lib.addCommand('openserver', {
+    help = locale('command.openserver.help'),
+    restricted = 'group.admin'
+}, function(source)
+    if not config.server.closed then
+        Notify(source, locale('error.server_already_open'), 'error')
+        return
+    end
+    
+    config.server.closed = false
+    Notify(source, locale('success.server_opened'), 'success')
+end)
+
+-- Close server
+lib.addCommand('closeserver', {
+    params = {
+        { name = 'reason', help = 'Close reason', type = 'string' }
+    },
+    restricted = 'group.admin'
+}, function(source, args)
+    if config.server.closed then
+        Notify(source, locale('error.server_already_closed'), 'error')
+        return
+    end
+    
+    local reason = args.reason or 'No reason specified'
+    config.server.closed = true
+    config.server.closedReason = reason
+    
+    -- Kick non-whitelisted players
+    for k in pairs(QBX.Players) do
+        if not IsPlayerAceAllowed(k, config.server.whitelistPermission) then
+            DropPlayer(k, reason)
+        end
+    end
+    
+    Notify(source, locale('success.server_closed'), 'success')
+end)
+
+-- Toggle PVP
+lib.addCommand('togglepvp', {
+    help = locale('command.togglepvp.help'),
+    restricted = 'group.admin'
+}, function(source)
+    config.server.pvp = not config.server.pvp
+    GlobalState.PVPEnabled = config.server.pvp
+end)
+```
+
+Usage:
+```bash
+/openserver
+/closeserver "Server maintenance"
+/togglepvp
+```
+
+### Character Management
+
+```lua server/commands.lua
+-- Force logout player
+lib.addCommand('logout', {
+    help = locale('info.logout_command_help'),
+    restricted = 'group.admin'
+}, Logout)
+
+-- Force delete character
+lib.addCommand('deletechar', {
+    help = locale('info.deletechar_command_help'),
+    restricted = 'group.admin',
+    params = {
+        { name = 'id', help = 'Player ID', type = 'number' }
+    }
+}, function(source, args)
+    if not IsOptin(source) then 
+        Notify(source, locale('error.not_optin'), 'error') 
+        return 
+    end
+    
+    local player = GetPlayer(args.id)
+    if not player then return end
+    
+    local citizenId = player.PlayerData.citizenid
+    ForceDeleteCharacter(citizenId)
+    Notify(source, locale('success.character_deleted_citizenid', citizenId))
+end)
+```
+
+## Deprecated Permission Functions
+
+These functions are deprecated but maintained for backward compatibility:
+
+```lua
+-- Add permission (deprecated)
+lib.addCommand('addpermission', {
+    params = {
+        { name = 'id', help = 'Player ID', type = 'playerId' },
+        { name = 'permission', help = 'Permission name', type = 'string' }
+    },
+    restricted = 'group.admin'
+}, function(source, args)
+    local player = GetPlayer(args.id)
+    if player then
+        AddPermission(player.PlayerData.source, args.permission)
+    end
+end)
+
+-- Remove permission (deprecated)
+lib.addCommand('removepermission', {
+    params = {
+        { name = 'id', help = 'Player ID', type = 'playerId' },
+        { name = 'permission', help = 'Permission name', type = 'string' }
+    },
+    restricted = 'group.admin'
+}, function(source, args)
+    local player = GetPlayer(args.id)
+    if player then
+        RemovePermission(player.PlayerData.source, args.permission)
+    end
+end)
+```
+
+<Warning>
+Use FiveM's native ACE system instead of the deprecated `AddPermission` and `RemovePermission` functions.
+</Warning>
+
+## Player Commands
+
+These commands are available to all players:
+
+```lua server/commands.lua
+-- Check job
+lib.addCommand('job', {
+    help = locale('command.job.help')
+}, function(source)
+    local PlayerJob = GetPlayer(source).PlayerData.job
+    Notify(source, locale('info.job_info', PlayerJob.label, PlayerJob.grade.name, PlayerJob.onduty))
+end)
+
+-- Check gang
+lib.addCommand('gang', {
+    help = locale('command.gang.help')
+}, function(source)
+    local PlayerGang = GetPlayer(source).PlayerData.gang
+    Notify(source, locale('info.gang_info', PlayerGang.label, PlayerGang.grade.name))
+end)
+
+-- Check ID
+lib.addCommand('id', {
+    help = locale('info.check_id')
+}, function(source)
+    Notify(source, 'ID: ' .. source)
+end)
+
+-- Proximity OOC chat
+lib.addCommand('ooc', {
+    help = locale('command.ooc.help')
+}, function(source, args)
+    local message = table.concat(args, ' ')
+    -- Sends message to nearby players
+end)
+
+-- Me command (display action above head)
+lib.addCommand('me', {
+    params = {
+        { name = 'message', help = 'Action message', type = 'string' }
+    }
+}, function(source, args)
+    local msg = table.concat(args, ' '):gsub('[~<].-[>~]', '')
+    local playerState = Player(source).state
+    playerState:set('me', msg, true)
+    playerState:set('me', nil, true) -- Reset for replication
+end)
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Use Opt-In for Destructive Commands">
+    Always check `IsOptin()` before executing potentially destructive admin commands to prevent accidents.
+  </Accordion>
+
+  <Accordion title="Log Admin Actions">
+    Use the logging system to track admin command usage for accountability.
+  </Accordion>
+
+  <Accordion title="Restrict Sensitive Commands">
+    Use `restricted = 'group.admin'` for all administrative commands.
+  </Accordion>
+
+  <Accordion title="Validate Player Existence">
+    Always check if a player exists before executing commands on them.
+  </Accordion>
+
+  <Accordion title="Use ACE Permissions">
+    Leverage FiveM's ACE system for granular permission control rather than deprecated methods.
+  </Accordion>
+</AccordionGroup>
+
+## Example: Custom Admin Command
+
+```lua
+lib.addCommand('heal', {
+    help = 'Heal a player',
+    params = {
+        { name = 'id', help = 'Player ID', type = 'playerId', optional = true }
+    },
+    restricted = 'group.admin'
+}, function(source, args)
+    -- Check opt-in
+    if not IsOptin(source) then 
+        Notify(source, locale('error.not_optin'), 'error')
+        return 
+    end
+    
+    -- Determine target
+    local target = args.id or source
+    local player = GetPlayer(target)
+    
+    if not player then
+        Notify(source, 'Player not found', 'error')
+        return
+    end
+    
+    -- Heal player
+    exports.qbx_core:SetMetadata(target, 'health', 200)
+    exports.qbx_core:SetMetadata(target, 'armor', 100)
+    
+    Notify(source, 'Player healed', 'success')
+    Notify(target, 'You have been healed by an admin', 'info')
+end)
+```

@@ -1,0 +1,443 @@
+---
+title: Jobs & Gangs System
+description: Complete guide to the jobs and gangs system including grades, permissions, and multi-group support
+icon: briefcase
+---
+
+## Overview
+
+Qbox Core features a flexible job and gang system that supports:
+- **Multi-job support** - Players can belong to multiple jobs simultaneously
+- **Multi-gang support** - Players can belong to multiple gangs simultaneously
+- **Grade system** - Hierarchical rank structure with permissions
+- **Primary group** - One active job and gang at a time
+- **Dynamic management** - Add/remove groups at runtime
+
+## Job Structure
+
+### Job Type Definition
+
+```lua types.lua
+---@class Job : JobData
+---@field grades table<integer, JobGradeData>
+
+---@class JobData : GroupData
+---@field label string -- Display name
+---@field type? string -- Job type (leo, ems, mechanic, etc.)
+---@field defaultDuty boolean -- Whether players spawn on duty
+---@field offDutyPay boolean -- Whether off-duty players receive payment
+
+---@class JobGradeData : GradeData
+---@field name string -- Grade display name
+---@field payment number -- Salary amount
+---@field isboss? boolean -- Boss permissions
+---@field bankAuth? boolean -- Bank account access
+```
+
+### Example Job Definition
+
+From `shared/jobs.lua`:
+
+```lua shared/jobs.lua
+['police'] = {
+    label = 'LSPD',
+    type = 'leo',
+    defaultDuty = true,
+    offDutyPay = false,
+    grades = {
+        [0] = {
+            name = 'Recruit',
+            payment = 50
+        },
+        [1] = {
+            name = 'Officer',
+            payment = 75
+        },
+        [2] = {
+            name = 'Sergeant',
+            payment = 100
+        },
+        [3] = {
+            name = 'Lieutenant',
+            payment = 125
+        },
+        [4] = {
+            name = 'Chief',
+            isboss = true,
+            bankAuth = true,
+            payment = 150
+        },
+    },
+}
+```
+
+## Gang Structure
+
+### Gang Type Definition
+
+```lua types.lua
+---@class Gang : GangData
+---@field grades table<integer, GangGradeData>
+
+---@class GangData : GroupData
+---@field label string -- Display name
+
+---@class GangGradeData : GradeData
+---@field name string -- Grade display name
+---@field isboss? boolean -- Boss permissions
+---@field bankAuth? boolean -- Bank account access
+```
+
+### Example Gang Definition
+
+From `shared/gangs.lua`:
+
+```lua shared/gangs.lua
+['ballas'] = {
+    label = 'Ballas',
+    grades = {
+        [0] = {
+            name = 'Recruit'
+        },
+        [1] = {
+            name = 'Enforcer'
+        },
+        [2] = {
+            name = 'Shot Caller'
+        },
+        [3] = {
+            name = 'Boss',
+            isboss = true,
+            bankAuth = true
+        },
+    },
+}
+```
+
+<Note>
+Gangs don't have payment fields since they typically don't provide salaries.
+</Note>
+
+## Player Job & Gang Data
+
+### PlayerJob Type
+
+```lua types.lua
+---@class PlayerJob
+---@field name string -- Job name
+---@field label string -- Display name
+---@field payment number -- Current grade payment
+---@field type? string -- Job type
+---@field onduty boolean -- On duty status
+---@field isboss boolean -- Has boss permissions
+---@field bankAuth boolean -- Has bank access
+---@field grade {name: string, level: number}
+```
+
+### PlayerGang Type
+
+```lua types.lua
+---@class PlayerGang
+---@field name string -- Gang name
+---@field label string -- Display name
+---@field isboss boolean -- Has boss permissions
+---@field bankAuth boolean -- Has bank access
+---@field grade {name: string, level: number}
+```
+
+## Managing Jobs
+
+### Setting a Job (Primary)
+
+Replaces the player's current primary job.
+
+```lua server/player.lua
+-- Set player's primary job
+local success, errorResult = exports.qbx_core:SetJob(source, 'police', 2)
+
+if not success then
+    print('Error:', errorResult.code, errorResult.message)
+end
+```
+
+<Info>
+By default, `SetJob` removes the player from their current primary job. This behavior is controlled by the `qbx:setjob_replaces` convar.
+</Info>
+
+### Adding a Job (Multi-Job)
+
+Adds a job without removing existing jobs.
+
+```lua server/player.lua
+-- Add job to player's job list
+local success, errorResult = exports.qbx_core:AddPlayerToJob(citizenid, 'mechanic', 1)
+
+if not success then
+    if errorResult.code == 'max_jobs' then
+        print('Player has reached maximum jobs')
+    end
+end
+```
+
+The maximum number of jobs is controlled by the `qbx:max_jobs_per_player` convar (default: 1).
+
+### Changing Primary Job
+
+Switch between jobs the player already has.
+
+```lua server/player.lua
+-- Switch to a different job player already has
+local success = exports.qbx_core:SetPlayerPrimaryJob(citizenid, 'taxi')
+```
+
+### Removing a Job
+
+```lua server/player.lua
+-- Remove player from a job
+local success, errorResult = exports.qbx_core:RemovePlayerFromJob(citizenid, 'police')
+```
+
+<Warning>
+Removing a player's primary job automatically sets them to 'unemployed'.
+</Warning>
+
+### Setting Job Duty Status
+
+```lua server/player.lua
+-- Set on/off duty
+exports.qbx_core:SetJobDuty(source, true) -- On duty
+exports.qbx_core:SetJobDuty(source, false) -- Off duty
+```
+
+## Managing Gangs
+
+Gang management follows the same pattern as jobs.
+
+### Setting a Gang (Primary)
+
+```lua server/player.lua
+local success, errorResult = exports.qbx_core:SetGang(source, 'ballas', 2)
+```
+
+### Adding a Gang (Multi-Gang)
+
+```lua server/player.lua
+local success, errorResult = exports.qbx_core:AddPlayerToGang(citizenid, 'vagos', 1)
+```
+
+The maximum number of gangs is controlled by the `qbx:max_gangs_per_player` convar (default: 1).
+
+### Changing Primary Gang
+
+```lua server/player.lua
+local success = exports.qbx_core:SetPlayerPrimaryGang(citizenid, 'lostmc')
+```
+
+### Removing a Gang
+
+```lua server/player.lua
+local success, errorResult = exports.qbx_core:RemovePlayerFromGang(citizenid, 'ballas')
+```
+
+<Warning>
+Removing a player's primary gang automatically sets them to 'none'.
+</Warning>
+
+## Getting Job & Gang Data
+
+### Get All Jobs/Gangs
+
+```lua server/groups.lua
+-- Get all jobs
+local jobs = exports.qbx_core:GetJobs()
+for jobName, jobData in pairs(jobs) do
+    print(jobName, jobData.label)
+end
+
+-- Get all gangs
+local gangs = exports.qbx_core:GetGangs()
+```
+
+### Get Specific Job/Gang
+
+```lua server/groups.lua
+-- Get job data
+local policeJob = exports.qbx_core:GetJob('police')
+if policeJob then
+    print('Police label:', policeJob.label)
+    print('Grade 2 name:', policeJob.grades[2].name)
+end
+
+-- Get gang data
+local ballasGang = exports.qbx_core:GetGang('ballas')
+```
+
+## Creating & Modifying Groups
+
+### Create a New Job
+
+```lua server/groups.lua
+local success, message = exports.qbx_core:CreateJob('security', {
+    label = 'Security',
+    defaultDuty = true,
+    offDutyPay = false,
+    grades = {
+        [0] = { name = 'Guard', payment = 40 },
+        [1] = { name = 'Lead Guard', payment = 60 },
+        [2] = { name = 'Manager', payment = 80, isboss = true, bankAuth = true }
+    }
+}, true) -- true = save to file
+```
+
+### Create Multiple Jobs
+
+```lua server/groups.lua
+local jobs = {
+    ['delivery'] = {
+        label = 'Delivery',
+        defaultDuty = true,
+        grades = {
+            [0] = { name = 'Driver', payment = 45 }
+        }
+    },
+    ['mining'] = {
+        label = 'Mining',
+        defaultDuty = true,
+        grades = {
+            [0] = { name = 'Miner', payment = 50 }
+        }
+    }
+}
+
+exports.qbx_core:CreateJobs(jobs, true)
+```
+
+### Create a Gang
+
+```lua server/groups.lua
+exports.qbx_core:CreateGangs({
+    ['mafia'] = {
+        label = 'The Mafia',
+        grades = {
+            [0] = { name = 'Associate' },
+            [1] = { name = 'Soldier' },
+            [2] = { name = 'Capo', isboss = true, bankAuth = true }
+        }
+    }
+}, true)
+```
+
+### Update Job/Gang Grades
+
+```lua server/groups.lua
+-- Update a job grade
+exports.qbx_core:UpsertJobGrade('police', 5, {
+    name = 'Captain',
+    payment = 175,
+    isboss = true,
+    bankAuth = true
+}, true)
+
+-- Update a gang grade
+exports.qbx_core:UpsertGangGrade('ballas', 4, {
+    name = 'Kingpin',
+    isboss = true,
+    bankAuth = true
+}, true)
+```
+
+## Events
+
+### Job Events
+
+```lua
+-- Server: Job updated
+AddEventHandler('QBCore:Server:OnJobUpdate', function(source, job)
+    print(source, 'new job:', job.name)
+end)
+
+-- Client: Job updated
+RegisterNetEvent('QBCore:Client:OnJobUpdate', function(job)
+    print('Your job is now:', job.label)
+end)
+
+-- Server: Duty changed
+AddEventHandler('QBCore:Server:SetDuty', function(source, onDuty)
+    print(source, 'duty status:', onDuty)
+end)
+```
+
+### Gang Events
+
+```lua
+-- Server: Gang updated
+AddEventHandler('QBCore:Server:OnGangUpdate', function(source, gang)
+    print(source, 'new gang:', gang.name)
+end)
+
+-- Client: Gang updated
+RegisterNetEvent('QBCore:Client:OnGangUpdate', function(gang)
+    print('Your gang is now:', gang.label)
+end)
+```
+
+### Group Update Events (Multi-Job/Gang)
+
+```lua
+-- Triggered when player is added to or removed from a group
+AddEventHandler('qbx_core:server:onGroupUpdate', function(source, groupName, grade)
+    if grade then
+        print(source, 'added to', groupName, 'at grade', grade)
+    else
+        print(source, 'removed from', groupName)
+    end
+end)
+```
+
+## Admin Commands
+
+Qbox Core includes admin commands for job/gang management:
+
+```bash
+# Set player's primary job
+/setjob [id] [job] [grade]
+
+# Change primary job (if player already has it)
+/changejob [id] [job]
+
+# Add job to player
+/addjob [id] [job] [grade]
+
+# Remove job from player
+/removejob [id] [job]
+
+# Set player's gang
+/setgang [id] [gang] [grade]
+
+# Check your current job
+/job
+
+# Check your current gang
+/gang
+```
+
+## Example: Multi-Job System
+
+```lua
+-- Enable multi-job support (set in server.cfg)
+setr qbx:max_jobs_per_player 3
+
+-- Add multiple jobs to a player
+exports.qbx_core:AddPlayerToJob(citizenid, 'police', 2)
+exports.qbx_core:AddPlayerToJob(citizenid, 'ambulance', 1)
+exports.qbx_core:AddPlayerToJob(citizenid, 'mechanic', 0)
+
+-- Check all player jobs
+local player = exports.qbx_core:GetPlayer(source)
+for jobName, grade in pairs(player.PlayerData.jobs) do
+    print('Has job:', jobName, 'Grade:', grade)
+end
+
+-- Switch primary job
+exports.qbx_core:SetPlayerPrimaryJob(citizenid, 'ambulance')
+```
